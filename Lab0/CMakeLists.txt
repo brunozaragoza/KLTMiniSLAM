@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.5)
+
+set(PROJECT_NAME Lab0)
+
+set(CMAKE_BUILD_TYPE DEBUG)
+
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
+project(${PROJECT_NAME})
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
+
+# Compilation flags:
+#   -Flag for code optimizations: -O3
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+
+find_package(Eigen3 REQUIRED)
+
+add_subdirectory(Modules)
+add_subdirectory(Apps)

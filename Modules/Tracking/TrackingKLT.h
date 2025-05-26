@@ -121,7 +121,7 @@
      bool bMotionModel_;     //Flag to check if the velocity model is valid
  
      //Monocular map initializer
-     MonocularMapInitializerKLT monoInitializer_;
+     std::shared_ptr<MonocularMapInitializerKLT> monoInitializer_;
  
      //SLAM map
      std::shared_ptr<Map> pMap_;

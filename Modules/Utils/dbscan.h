@@ -26,7 +26,7 @@
 #include <opencv2/opencv.hpp>
 #include <mlpack/methods/dbscan/dbscan.hpp>
 #include <mlpack/methods/range_search/range_search.hpp>
-using mlpack::range::RangeSearch;
+using mlpack::RangeSearch;
 
 std::vector<int> Dbscan2D(std::vector<cv::Point2f>& points);
 

@@ -1,11 +1,43 @@
-#Miinimum CMAKE version required
 cmake_minimum_required(VERSION 3.5)
+project(MiniSLAM)
 
-#Find required libraries
+set(CMAKE_CXX_STANDARD 17)
+# Find dependencies
+find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.1.0 REQUIRED)
-find_package(OpenCV 4 REQUIRED)
 find_package(Pangolin REQUIRED)
-find_package(mlpack REQUIRED)
+
+find_library(MLPACK_LIBRARY
+    NAMES mlpack
+    PATHS /usr/lib /usr/lib/x86_64-linux-gnu
+)
+
+find_path(MLPACK_INCLUDE_DIR
+    NAMES mlpack/core.hpp
+    PATHS /usr/include
+)
+
+find_library(ARMADILLO_LIBRARY
+    NAMES armadillo
+    PATHS /usr/lib /usr/lib/x86_64-linux-gnu
+)
+
+find_path(ARMADILLO_INCLUDE_DIR
+    NAMES armadillo
+    PATHS /usr/include
+)
+
+find_package(Armadillo REQUIRED)
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+
+
+
+
+# Find libmlpack.so (or equivalent) and store it in MLPACK_LIBRARY.
+# If this example script were smarter, it would also find other dependencies of mlpack and store them in
+# an MLPACK_LIBRARIES variable instead.
+
 #Set the name of the Library
 set(LIBRARY_NAME mini_slam)
 
@@ -85,8 +117,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
         ${EIGEN3_INCLUDE_DIR}
         ${CMAKE_SOURCE_DIR}/Thirdparty/Sophus
         ${CMAKE_SOURCE_DIR}/Thirdparty/g2o
+        ${ARMADILLO_INCLUDE_DIR}
         ${Pangolin_INCLUDE_DIRS}
-        ${MLPACK_INCLUDE_DIRS})
+        ${ARMADILLO_INCLUDE_DIRS})
 
 #Add the library
 add_library(${LIBRARY_NAME} SHARED
@@ -98,7 +131,10 @@ target_link_libraries(${LIBRARY_NAME}
         ${OpenCV_LIBS}
         ${EIGEN3_LIBS}
         ${Pangolin_LIBRARIES}
-        mlpack::mlpack
+        ${MLPACK_LIBRARY}
+        ${ARMADILLO_LIBRARY}
+        ${BLAS_LIBRARIES}
+        ${LAPACK_LIBRARIES}
         ${CMAKE_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_core.so
         ${CMAKE_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_stuff.so
         ${CMAKE_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_types_sba.so)

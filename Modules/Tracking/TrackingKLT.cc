@@ -55,7 +55,7 @@ TrackingKLT::TrackingKLT(Settings &settings, std::shared_ptr<FrameVisualizer> &v
                                       options_.klt_max_level, options_.klt_max_iters,
                                       options_.klt_epsilon, options_.klt_min_eig_th);
     MonocularMapInitializerKLT::Options options;
-    monoInitializer_ = MonocularMapInitializerKLT(options, featExtractor_, settings.getCalibration());
+    monoInitializer_ = std::make_shared<MonocularMapInitializerKLT>(options, featExtractor_, settings.getCalibration());
 
     visualizer_ = visualizer;
     mapVisualizer_ = mapVisualizer;
@@ -175,7 +175,7 @@ void TrackingKLT::ExtractFeaturesInFrame(const cv::Mat& im) {
 
 bool TrackingKLT::MonocularMapInitialization(const cv::Mat& im_left,
         const cv::Mat& mask, const cv::Mat& im_clahe) {
-auto initialization_status = monoInitializer_.ProcessNewImage(im_left, im_clahe, mask);
+auto initialization_status = monoInitializer_->ProcessNewImage(im_left, im_clahe, mask);
 
 
 auto initialization_results = initialization_status;

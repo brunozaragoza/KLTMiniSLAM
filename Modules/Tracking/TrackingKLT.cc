@@ -88,8 +88,14 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
         cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
         cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
         cv::erode(global_mask, global_mask, kernel);
-        if (MonocularMapInitialization(im, global_mask, prevIm_))
+
+            // Extract features in the current image
+        
+            if (MonocularMapInitialization(currIm_, global_mask, prevIm_))
         {
+
+            std::cout << "MonocularMapInitialization" << std::endl;  
+
             status_ = GOOD;
             Tcw = currFrame_.getPose();
             // Promote current frame to KeyFrame
@@ -101,10 +107,12 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
 
             return true;
         }
+    
         else
         {
             return false;
         }
+    
     }
     // Track the following camera poses
     if (status_ == GOOD)
@@ -175,9 +183,15 @@ void TrackingKLT::ExtractFeaturesInFrame(const cv::Mat& im) {
 
 bool TrackingKLT::MonocularMapInitialization(const cv::Mat& im_left,
         const cv::Mat& mask, const cv::Mat& im_clahe) {
+
+bFirstIm_ = false;
+    // Perform the initialization
 auto initialization_status = monoInitializer_->ProcessNewImage(im_left, im_clahe, mask);
 
-
+if (initialization_status.current_keypoints.empty()) {
+    std::cout << "MonocularMapInitializerKLT: No keypoints found for initialization." << std::endl;
+    return false;
+}
 auto initialization_results = initialization_status;
 
 vector<float> depths;
@@ -247,7 +261,6 @@ pMap_->insertKeyFrame(current_keyframe);
 
 // Set reference image to the KLT tracker.
 klt_tracker_.SetReferenceImage(im_left, currFrame_.getKeyPoints(), mask);
-prevIm_ = im_left.clone();
 return true;
     
 }

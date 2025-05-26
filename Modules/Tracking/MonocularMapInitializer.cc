@@ -44,6 +44,7 @@ MonocularMapInitializer::MonocularMapInitializer(const int nFeatures, shared_ptr
 
 void MonocularMapInitializer::changeReference(std::vector<cv::KeyPoint> &vKeys) {
     refKeys_ = vKeys;
+    std::cout<<"NUMBER OF POINTS"<< refKeys_.size() << std::endl;
 }
 
 bool MonocularMapInitializer::initialize(const std::vector<cv::KeyPoint>& vCurrKeys, const std::vector<int>& vMatches, const int nMatches,

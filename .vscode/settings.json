@@ -72,6 +72,7 @@
         "*.txx": "cpp",
         "core": "cpp",
         "numericaldiff": "cpp",
-        "nonlinearoptimization": "cpp"
+        "nonlinearoptimization": "cpp",
+        "csetjmp": "cpp"
     }
 }

@@ -47,7 +47,10 @@
                                                const cv::Mat& mask) {
      // Track features and update the feature tracks.
      DataAssociation(im, im_clahe, mask);
- 
+     if (internal_status_ == RECENTLY_RESET) {
+        return InitializationResults{Sophus::SE3f(), {}, {}, {}, {}};
+    }
+                                                
      // Perform optical flow clustering.
      auto feature_labels = FeatureTracksClustering();
  
@@ -92,6 +95,8 @@
          ResetInitialization(im, im_clahe, mask);
      } else {
          // Track features.
+
+         
          n_tracks_in_image_ = klt_tracker_.Track(im, current_keypoints_, current_keypoint_statuses_,
                             true, options_.klt_min_SSIM, mask);
  
@@ -162,7 +167,17 @@
      current_keypoint_statuses_.resize(current_keypoints_.size());
      fill(current_keypoint_statuses_.begin(), current_keypoint_statuses_.end(),
           TRACKED);
- 
+     std::cout << "MonocularMapInitializerKLT: Updating reference image with "
+               << current_keypoints_.size() << " keypoints." << std::endl;
+     // Update the KLT tracker with the new reference image.
+     if (current_keypoints_.empty()) {
+         std::cerr << "MonocularMapInitializerKLT: No keypoints to update reference image." << std::endl;
+         return;
+     }
+     // Set the reference image to the KLT tracker.
+     // This is necessary to ensure that the KLT tracker has the correct reference image
+     // for the next tracking iteration.
+     // This is necessary to ensure that the KLT tracker has the correct reference image
      klt_tracker_.SetReferenceImage(im, current_keypoints_);
  }
  
@@ -220,6 +235,10 @@
      
      std::vector<bool> vTriangulated;
      vTriangulated.resize(current_keypoint_statuses_format.size(), false);
+     std::cout << "MonocularMapInitializerKLT: Rigid initialization with " << current_keypoints_.size() << " keypoints." <<  std::endl;
+     std::cout << "MonocularMapInitializerKLT: Rigid initialization with " << current_keypoint_statuses_format.size() << " keypoints." <<  std::endl;
+     std::cout << "MonocularMapInitializerKLT: Rigid initialization with " << n_tracks_in_image_ << " tracks in image." <<  std::endl;
+     // Perform the rigid initialization.
      auto status =monoInitializer_.initialize(current_keypoints_, 
                                                 current_keypoint_statuses_format,
                                                  n_tracks_in_image_, 
@@ -239,6 +258,7 @@
      if (status) {
         std::cerr << "MonocularMapInitializerKLT: Rigid initialization failed: " << std::endl;
      } else {
+            std::cout << "MonocularMapInitializerKLT: Rigid initialization succeeded." << std::endl;
          return make_tuple(camera_transform_world, landmarks_position);
      }
  }

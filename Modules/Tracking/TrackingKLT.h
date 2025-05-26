@@ -117,7 +117,7 @@
      };
  
      TrackStatus status_;
-     bool bFirstIm_;         //Flag to check if we have already received an image
+     bool bFirstIm_=false;         //Flag to check if we have already received an image
      bool bMotionModel_;     //Flag to check if the velocity model is valid
  
      //Monocular map initializer

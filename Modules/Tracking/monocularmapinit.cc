@@ -218,10 +218,23 @@
  
      // Initialize the monocular map initializer.
      
-     
-     auto status =monoInitializer_.initialize(current_keypoints_, current_keypoint_statuses_format,
-                                                 n_tracks_in_image_, camera_transform_world,
-                                                 landmarks_position);
+     std::vector<bool> vTriangulated;
+     vTriangulated.resize(current_keypoint_statuses_format.size(), false);
+     auto status =monoInitializer_.initialize(current_keypoints_, 
+                                                current_keypoint_statuses_format,
+                                                 n_tracks_in_image_, 
+                                                 camera_transform_world,
+                                                 landmarks_position,
+                                                vTriangulated);
+    //update point tracked with the triangulated points
+        for (int idx = 0; idx < current_keypoint_statuses_format.size(); idx++) {
+            if (vTriangulated[idx]) {
+                current_keypoint_statuses_[idx] = TRACKED_WITH_3D;
+            } else {
+                current_keypoint_statuses_[idx] = TRACKED;
+            }
+        }
+
  
      if (status) {
         std::cerr << "MonocularMapInitializerKLT: Rigid initialization failed: " << std::endl;
@@ -257,7 +270,7 @@
  
          feature_tracks.push_back(feature_tracks_.feature_id_to_feature_track[feature_id].track_);
          track_labels.push_back(feature_labels[idx]);
-         vector<Eigen::Vector3f> landmark_track(track_leghth, *landmarks_position[idx]);
+         vector<Eigen::Vector3f> landmark_track(track_leghth, landmarks_position[idx]);
          landmark_tracks.push_back(landmark_track);
      }
  

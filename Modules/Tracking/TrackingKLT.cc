@@ -54,8 +54,8 @@ TrackingKLT::TrackingKLT(Settings &settings, std::shared_ptr<FrameVisualizer> &v
     klt_tracker_ = LucasKanadeTracker(cv::Size(options_.klt_window_size, options_.klt_window_size),
                                       options_.klt_max_level, options_.klt_max_iters,
                                       options_.klt_epsilon, options_.klt_min_eig_th);
-
-    monoInitializer_ = MonocularMapInitializer(settings.getFeaturesPerImage(), settings.getCalibration(), settings.getEpipolarTh(), settings.getMinCos());
+    MonocularMapInitializerKLT::Options options;
+    monoInitializer_ = MonocularMapInitializerKLT(options, featExtractor_, settings.getCalibration());
 
     visualizer_ = visualizer;
     mapVisualizer_ = mapVisualizer;
@@ -85,7 +85,10 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
     // If no map is initialized, perform monocular initialization
     if (status_ == NOT_INITIALIZED)
     {
-        if (monocularMapInitialization())
+        cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
+        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+        cv::erode(global_mask, global_mask, kernel);
+        if (MonocularMapInitialization(im, global_mask, prevIm_))
         {
             status_ = GOOD;
             Tcw = currFrame_.getPose();
@@ -170,128 +173,83 @@ void TrackingKLT::ExtractFeaturesInFrame(const cv::Mat& im) {
     currFrame_.setKeyPoints(currFrame_.getKeyPoints());
 }
 
-bool TrackingKLT::monocularMapInitialization()
-{
-    if (bFirstIm_)
-    {
-        extractFeatures(currIm_);
+bool TrackingKLT::MonocularMapInitialization(const cv::Mat& im_left,
+        const cv::Mat& mask, const cv::Mat& im_clahe) {
+auto initialization_status = monoInitializer_.ProcessNewImage(im_left, im_clahe, mask);
 
-        monoInitializer_.changeReference(currFrame_.getKeyPoints());
 
-        std::vector<LandmarkStatus> statuses(currFrame_.getKeyPoints().size(), LandmarkStatus::TRACKED);
-        currFrame_.setLandmarkStatuses(statuses);
-        // Set the keypoints in the current frame
-        // Full mask, slightly eroded
-        cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
-        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5)); // reduced erosion
-        cv::erode(global_mask, global_mask, kernel);
+auto initialization_results = initialization_status;
 
-        // Set reference image for KLT tracker
-        klt_tracker_.SetReferenceImage(currIm_, currFrame_.getKeyPoints(), global_mask);
+vector<float> depths;
+for (int idx = 0; idx < initialization_results.current_keypoints.size(); idx++) {
+Eigen::Vector3f current_landmark_position = initialization_results.current_landmark_positions[idx];
+depths.push_back(current_landmark_position.z());
+}
 
-        prevFrame_.assign(currFrame_);
-        prevIm_ = currIm_;
-        bFirstIm_ = false;
+const int median_idx = depths.size() / 2;
+nth_element(depths.begin(), depths.begin() + median_idx, depths.end());
+const float median_depth = depths[median_idx];
+const float scale = 3.f / median_depth;
+float accumulate = 0;
+for (float element : depths){
+    accumulate += element;
+}
 
-        visualizer_->setReferenceFrame(prevFrame_.getKeyPointsDistorted(), currIm_);
+float mu=accumulate / depths.size();
+float accumulated = 0;
 
-        return false;
-    }
+for(float element : depths){
+    accumulated += (element - mu) * (element - mu);
+}
 
-    // === Tracking Step ===
+float sigma=sqrtf(accumulated / depths.size());
+float sigma_scaled = sigma * scale;
 
-    // Prepare mask
-    cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
-    cv::erode(global_mask, global_mask, kernel);
 
-    // Copy previous keypoints (CORRECTION 1)
-    std::vector<cv::KeyPoint> pts = prevFrame_.getKeyPoints();
+Frame reference_frame;
+for (int idx = 0; idx < initialization_results.current_keypoints.size(); idx++) {
+cv::KeyPoint reference_keypoint = initialization_results.reference_keypoints[idx];
+cv::KeyPoint current_keypoint = initialization_results.current_keypoints[idx];
 
-    // Prepare landmark statuses (CORRECTION 2)
-    std::vector<LandmarkStatus> statuses(prevFrame_.getKeyPoints().size(), LandmarkStatus::TRACKED);
+Eigen::Vector3f reference_landmark_position = initialization_results.reference_landmark_positions[idx] * scale;
+Eigen::Vector3f current_landmark_position = initialization_results.current_landmark_positions[idx] * scale;
+//Create a new MapPoint
+std::shared_ptr<MapPoint> reference_landmark_position_ptr = make_shared<MapPoint>(reference_landmark_position);
+pMap_->insertMapPoint( reference_landmark_position_ptr);
 
-    // Run KLT tracking
-    int nMatches = klt_tracker_.Track(currIm_, pts, statuses,
-                                      true, options_.klt_min_SSIM, global_mask);
+pMap_->addObservation(0,reference_landmark_position_ptr->getId(),idx);
+pMap_->addObservation(1,reference_landmark_position_ptr->getId(),idx);
+/*reference_frame.InsertObservation(reference_keypoint,
+           reference_landmark_position,
+           mappoint_id,
+           TRACKED_WITH_3D);
 
-    // Store tracked keypoints into current frame (CORRECTION 3)
-    currFrame_.setLandmarkStatuses(statuses);
-    currFrame_.setKeyPoints(pts);
-    currFrame_.setIm(currIm_);
-    for (int t = 0; t < currFrame_.LandmarkStatuses().size(); t++)
-    {
-        if (currFrame_.LandmarkStatuses()[t] == LandmarkStatus::TRACKED){
-            vMatches_[t] = 1;
-        }
-        else
-        {
-            vMatches_[t] = -1;
-        }
-    }
-    //visualizer_->drawCurrentFeatures(prevFrame_.getKeyPoints(), currIm_);
-    //visualizer_->drawFeatures(prevKPS, prevIm_);
-    //visualizer_->drawMatches(prevKPS, prevIm_, currKPs, currIm_, vMatches_S);
+current_frame_->InsertObservation(current_keypoint,
+           current_landmark_position,
+           mappoint_id,
+           TRACKED_WITH_3D);
+*/
 
-    // Update reference frame if not enough matches
-    if (nMatches < 70)
-    {
-        monoInitializer_.changeReference(currFrame_.getKeyPoints());
-        prevFrame_.assign(currFrame_);
-        prevIm_ = currIm_;
+           
+pMap_->addObservation(0,reference_landmark_position_ptr->getId(),idx);
 
-        visualizer_->setReferenceFrame(prevFrame_.getKeyPointsDistorted(), currIm_);
+//reference_frame.MutableCameraTransformationWorld() = Sophus::SE3f();
+//initialization_results.camera_transform_world.translation() = initialization_results.camera_transform_world.translation() * scale;
+//current_frame_->MutableCameraTransformationWorld() = initialization_results.camera_transform_world;
+}
+// Create Keyframes from the frames.
+auto first_keyframe = make_shared<KeyFrame>(reference_frame);
+auto current_keyframe = make_shared<KeyFrame>(currFrame_);
 
-        // ALSO update KLT reference (CORRECTION 4)
-        klt_tracker_.SetReferenceImage(currIm_, currFrame_.getKeyPoints(), global_mask);
+// Insert KeyFrame in the map.
+pMap_->insertKeyFrame(first_keyframe);
+pMap_->insertKeyFrame(current_keyframe);
 
-        return false;
-    }
-
-    // Continue with initialization usi // Try to initialize by finding an Essential matrix
+// Set reference image to the KLT tracker.
+klt_tracker_.SetReferenceImage(im_left, currFrame_.getKeyPoints(), mask);
+prevIm_ = im_left.clone();
+return true;
     
-    Sophus::SE3f Tcw;
-    vector<Eigen::Vector3f> v3DPoints;
-    v3DPoints.reserve(vMatches_.capacity());
-    vector<bool> vTriangulated(vMatches_.capacity(), false);
-    if (!monoInitializer_.initialize(currFrame_.getKeyPoints(), vMatches_, nMatches, Tcw, v3DPoints, vTriangulated))
-    {
-        return false;
-    }
-
-    // TODO: Estimate scale
-    std::cout << "Number of matches" << nMatches << std::endl;
-    std::cout << "Number of triangulated points" << vTriangulated.size() << std::endl;
-    std::cout << "Number of 3D points" << v3DPoints.size() << std::endl;
-    const float scale = 5.;
- 
-    // Create map
-
-    Tcw.translation() = Tcw.translation() / scale;
-    int nTriangulated = 0;
-
-    for(size_t i = 0; i < vTriangulated.size(); i++){
-        if(vTriangulated[i]){
-            Eigen::Vector3f v = v3DPoints[i] / scale;
-            shared_ptr<MapPoint> pMP(new MapPoint(v));
-
-            prevFrame_.setMapPoint(i,pMP);
-            currFrame_.setMapPoint(vMatches_[i],pMP);
-
-            pMap_->insertMapPoint(pMP);
-
-            nTriangulated++;
-        }
-    }
-
-    std::cout << "[DEBUG] Triangulated points: " << nTriangulated << std::endl;
-     //Set observations into the map
-     
-    
-    prevFrame_.assign(currFrame_);
-  
-
-    return true;
 }
 
 bool TrackingKLT::cameraTracking()

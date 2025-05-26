@@ -33,7 +33,7 @@
  #include "System/Settings.h"
  
  #include "Tracking/Frame.h"
- #include "Tracking/MonocularMapInitializer.h"
+ #include "Tracking/monocularmapinit.h"
  #include "Matching/lucas_kanade_tracker.h"
  #include "Matching/landmarkstatus.h"
  #include <Visualization/FrameVisualizer.h>
@@ -85,7 +85,8 @@
      void updateLastPose();
  
      //Initializes a new map from monocuar 2 views
-     bool monocularMapInitialization();
+     bool MonocularMapInitialization(const cv::Mat& im_left,
+        const cv::Mat& mask, const cv::Mat& im_clahe);
  
      //Performs the camera tracking with a constant velocity model
      bool cameraTracking();
@@ -120,7 +121,7 @@
      bool bMotionModel_;     //Flag to check if the velocity model is valid
  
      //Monocular map initializer
-     MonocularMapInitializer monoInitializer_;
+     MonocularMapInitializerKLT monoInitializer_;
  
      //SLAM map
      std::shared_ptr<Map> pMap_;

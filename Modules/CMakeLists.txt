@@ -39,9 +39,11 @@ set(HEADER_FILES
         ${root}/System/MiniSLAM.h
         ${root}/Tracking/Frame.h
         ${root}/Tracking/MonocularMapInitializer.h
+        ${root}/Tracking/monocularmapinit.h
         ${root}/Tracking/Tracking.h
         ${root}/Tracking/TrackingKLT.h
         ${root}/Utils/Geometry.h
+        ${root}/Utils/dbscan.h
         ${root}/Visualization/FrameVisualizer.h
         ${root}/Visualization/MapVisualizer.h)
 
@@ -69,8 +71,10 @@ set(SOURCE_FILES
         ${root}/Tracking/Frame.cc
         ${root}/Tracking/TrackingKLT.cc
         ${root}/Tracking/MonocularMapInitializer.cc
+        ${root}/Tracking/monocularmapinit.cc
         ${root}/Tracking/Tracking.cc
         ${root}/Utils/Geometry.cc
+        ${root}/Utils/dbscan.cc
         ${root}/Visualization/FrameVisualizer.cc
         ${root}/Visualization/MapVisualizer.cc)
 

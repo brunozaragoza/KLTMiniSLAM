@@ -61,10 +61,10 @@
  
     std::tuple<InitializationResults,bool> ProcessNewImage(const cv::Mat& im, const cv::Mat& im_clahe,
                           const cv::Mat& mask);
- 
+                          void DataAssociation(const cv::Mat& im, const cv::Mat& im_clahe,
+                            const cv::Mat& mask);
  private:
-     void DataAssociation(const cv::Mat& im, const cv::Mat& im_clahe,
-                          const cv::Mat& mask);
+    
  
      void ExtractFeatures(const cv::Mat& im, const cv::Mat& mask,
                           std::vector<cv::KeyPoint>& keypoints);

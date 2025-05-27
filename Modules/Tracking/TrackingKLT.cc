@@ -108,11 +108,11 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
             status_ = GOOD;
             Tcw = currFrame_.getPose();
             // Promote current frame to KeyFrame
-            pLastKeyFrame_ = shared_ptr<KeyFrame>(new KeyFrame(currFrame_));
+            //pLastKeyFrame_ = shared_ptr<KeyFrame>(new KeyFrame(currFrame_));
             visualizer_->drawCurrentFeatures(currFrame_.getKeyPoints(), currIm_);
 
             // Insert KeyFrame into the map
-            pMap_->insertKeyFrame(pLastKeyFrame_);
+            //pMap_->insertKeyFrame(pLastKeyFrame_);
 
             return true;
         }
@@ -206,8 +206,9 @@ return false;
 }
 nFramesFromLastKF_++;
 
-std::cout << "nFramesFromLastKF_: " << nFramesFromLastKF_ << std::endl;
-if(nFramesFromLastKF_ < 100) {
+if(nFramesFromLastKF_ < 50) {
+    monoInitializer_->DataAssociation(im_left, im_clahe, mask);
+    //std::cout << "MonocularMapInitialization: Resetting initialization after " << nFramesFromLastKF_ << " frames." << std::endl;
     return false;
 }
 auto [initialization_status,succs] = monoInitializer_->ProcessNewImage(im_left, im_clahe, mask);
@@ -241,18 +242,21 @@ float sigma_scaled = sigma * scale;
 
 
 Frame reference_frame;
-for (int idx = 0; idx < initialization_results.current_keypoints.size(); idx++) {
-cv::KeyPoint reference_keypoint = initialization_results.reference_keypoints[idx];
-cv::KeyPoint current_keypoint = initialization_results.current_keypoints[idx];
+std::cout << "Reference frame landmarks: " << initialization_results.reference_landmark_positions.size() << std::endl;
+for (int idx = 0; idx < initialization_results.current_landmark_positions.size(); idx++) {
+//cv::KeyPoint reference_keypoint = initialization_results.reference_keypoints[idx];
+//cv::KeyPoint current_keypoint = initialization_results.current_keypoints[idx];
 
 Eigen::Vector3f reference_landmark_position = initialization_results.reference_landmark_positions[idx] * scale;
-Eigen::Vector3f current_landmark_position = initialization_results.current_landmark_positions[idx] * scale;
+//Eigen::Vector3f current_landmark_position = initialization_results.current_landmark_positions[idx] * scale;
 //Create a new MapPoint
 std::shared_ptr<MapPoint> reference_landmark_position_ptr = make_shared<MapPoint>(reference_landmark_position);
+// Set the keypoint and descriptor
+//std::cout << "Creating MapPoint with ID: " << reference_landmark_position_ptr->getId() << std::endl;
 pMap_->insertMapPoint( reference_landmark_position_ptr);
 
-pMap_->addObservation(0,reference_landmark_position_ptr->getId(),idx);
-pMap_->addObservation(1,reference_landmark_position_ptr->getId(),idx);
+//pMap_->addObservation(0,reference_landmark_position_ptr->getId(),idx);
+//pMap_->addObservation(1,reference_landmark_position_ptr->getId(),idx);
 /*reference_frame.InsertObservation(reference_keypoint,
            reference_landmark_position,
            mappoint_id,
@@ -265,37 +269,39 @@ current_frame_->InsertObservation(current_keypoint,
 */
 
            
-pMap_->addObservation(0,reference_landmark_position_ptr->getId(),idx);
+//pMap_->addObservation(0,reference_landmark_position_ptr->getId(),idx);
 
 //reference_frame.MutableCameraTransformationWorld() = Sophus::SE3f();
 //initialization_results.camera_transform_world.translation() = initialization_results.camera_transform_world.translation() * scale;
 //current_frame_->MutableCameraTransformationWorld() = initialization_results.camera_transform_world;
 }
 // Create Keyframes from the frames.
-auto first_keyframe = make_shared<KeyFrame>(reference_frame);
-auto current_keyframe = make_shared<KeyFrame>(currFrame_);
+//auto first_keyframe = make_shared<KeyFrame>(reference_frame);
+//auto current_keyframe = make_shared<KeyFrame>(currFrame_);
 
 // Insert KeyFrame in the map.
-pMap_->insertKeyFrame(first_keyframe);
-pMap_->insertKeyFrame(current_keyframe);
+//pMap_->insertKeyFrame(first_keyframe);
+//pMap_->insertKeyFrame(current_keyframe);
 
 // Set reference image to the KLT tracker.
-klt_tracker_.SetReferenceImage(im_left, currFrame_.getKeyPoints(), mask);
+//klt_tracker_.SetReferenceImage(im_left, currFrame_.getKeyPoints(), mask);
 return true;
     
 }
 
 bool TrackingKLT::cameraTracking()
 {
+    std::cout << "TRACKING"<< std::endl;
+
     // === [0] Prepare mask
     cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::erode(global_mask, global_mask, kernel);
-    for( const auto &pt: prevFrame_.getMapPoints()){
-        currFrame_.setMapPoint(pt->getId(),pt);
+    for( const auto &pt: pMap_->getMapPoints())
+    {
+        currFrame_.setMapPoint(pt.first,pt.second);
     }
-    std::cout<<"[DEBUG] MapPoints in the current frame: "<<currFrame_.getMapPoints().size()<<std::endl;
-
+    std::cout << "[KLT] Tracking with " << currFrame_.getKeyPoints().size() << " features." << std::endl;
     // === [1] KLT Tracking ===
     std::vector<cv::KeyPoint> trackedPts = prevFrame_.getKeyPoints();
     std::vector<LandmarkStatus> statuses(prevFrame_.getKeyPoints().size(), LandmarkStatus::TRACKED);

@@ -171,7 +171,6 @@ int LucasKanadeTracker::Track(const Mat &newIm, std::vector<KeyPoint> &nextPts,
     vector<LandmarkStatus> &vMatched, const bool bInitialFlow,
     const float minSSIM, const cv::Mat& mask) {
 
-std::cout << "Lucas-Kanade optical flow tracking with " << nextPts.size() << " points." << std::endl;
 
         //Dimensions of half of the window
 Point2f halfWin((winSize_.width - 1) * 0.5f, (winSize_.height - 1) * 0.5f);

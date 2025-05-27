@@ -130,6 +130,7 @@
      std::shared_ptr<FrameVisualizer> visualizer_;
      std::shared_ptr<MapVisualizer> mapVisualizer_;
      cv::Mat currIm_;
+     cv::Mat firstim;
      cv::Mat prevIm_;
      Options options_;
      //Constant velocity model

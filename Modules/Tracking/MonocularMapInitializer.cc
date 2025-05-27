@@ -44,7 +44,6 @@ MonocularMapInitializer::MonocularMapInitializer(const int nFeatures, shared_ptr
 
 void MonocularMapInitializer::changeReference(std::vector<cv::KeyPoint> &vKeys) {
     refKeys_ = vKeys;
-    std::cout<<"NUMBER OF POINTS"<< refKeys_.size() << std::endl;
 }
 
 bool MonocularMapInitializer::initialize(const std::vector<cv::KeyPoint>& vCurrKeys, const std::vector<int>& vMatches, const int nMatches,
@@ -63,7 +62,11 @@ bool MonocularMapInitializer::initialize(const std::vector<cv::KeyPoint>& vCurrK
 
     for(size_t i = 0; i < vMatches.size(); i++){
         if(vMatches_[i] != -1){
+            
+            auto refr= calibration_->unproject(refKeys_[i].pt.x,refKeys_[i].pt.y).normalized();
+            //Unproject the keypoints to rays
             refRays_.block(currMatIdx,0,1,3) = calibration_->unproject(refKeys_[i].pt.x,refKeys_[i].pt.y).normalized();
+            
             currRays_.block(currMatIdx,0,1,3) = calibration_->unproject(currKeys_[vMatches[i]].pt.x,currKeys_[vMatches[i]].pt.y).normalized();
 
             refKeysMatched_.push_back(refKeys_[i].pt);

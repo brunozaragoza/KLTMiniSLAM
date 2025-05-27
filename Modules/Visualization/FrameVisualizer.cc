@@ -112,5 +112,5 @@ void FrameVisualizer::drawCurrentFrame(Frame &f) {
 void FrameVisualizer::updateWindows() {
     cv::waitKey(10);
 
-
 }
+

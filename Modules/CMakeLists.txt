@@ -77,6 +77,9 @@ set(HEADER_FILES
         ${root}/Utils/Geometry.h
         ${root}/Utils/dbscan.h
         ${root}/Visualization/FrameVisualizer.h
+        ${root}/Visualization/image_viz.h
+        ${root}/Visualization/color_factory.h
+        
         ${root}/Visualization/MapVisualizer.h)
 
 set(SOURCE_FILES
@@ -108,6 +111,8 @@ set(SOURCE_FILES
         ${root}/Utils/Geometry.cc
         ${root}/Utils/dbscan.cc
         ${root}/Visualization/FrameVisualizer.cc
+        ${root}/Visualization/image_viz.cc
+        ${root}/Visualization/color_factory.cc
         ${root}/Visualization/MapVisualizer.cc)
 
 set(MINI_SLAM_LIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR} PARENT_SCOPE)

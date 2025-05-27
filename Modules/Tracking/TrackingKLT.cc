@@ -55,6 +55,11 @@ TrackingKLT::TrackingKLT(Settings &settings, std::shared_ptr<FrameVisualizer> &v
                                       options_.klt_max_level, options_.klt_max_iters,
                                       options_.klt_epsilon, options_.klt_min_eig_th);
     MonocularMapInitializerKLT::Options options;
+    options.rigid_initializer_max_features= settings.getFeaturesPerImage();
+    options.rigid_initializer_epipolar_threshold = settings.getEpipolarTh();
+    options.rigid_initializer_min_parallax = settings.getMinCos();
+    options.rigid_initializer_radians_per_pixel = options_.radians_per_pixel;
+    options.rigid_initializer_min_sample_set_size = options_.klt_window_size;
     monoInitializer_ = std::make_shared<MonocularMapInitializerKLT>(options, featExtractor_, settings.getCalibration());
 
     visualizer_ = visualizer;
@@ -73,6 +78,7 @@ TrackingKLT::TrackingKLT(Settings &settings, std::shared_ptr<FrameVisualizer> &v
 bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
 {
     currIm_ = im.clone();
+    
     // Update previous frame
     if (status_ != NOT_INITIALIZED)
         prevFrame_.assign(currFrame_);
@@ -81,6 +87,7 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
     currFrame_.setIm(currIm_);
 
     nframesext++;
+
     //visualizer_->drawCurrentFeatures(prevFrame_.getKeyPoints(), currIm_);
     // If no map is initialized, perform monocular initialization
     if (status_ == NOT_INITIALIZED)
@@ -88,14 +95,16 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
         cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
         cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
         cv::erode(global_mask, global_mask, kernel);
-
             // Extract features in the current image
-        
+            if(!bFirstIm_) prevIm_ = firstim.clone();
             if (MonocularMapInitialization(currIm_, global_mask, prevIm_))
         {
 
-            std::cout << "MonocularMapInitialization" << std::endl;  
 
+            //nFramesFromLastKF_ = 0;
+
+            std::cout << "MonocularMapInitialization" << std::endl;  
+            
             status_ = GOOD;
             Tcw = currFrame_.getPose();
             // Promote current frame to KeyFrame
@@ -114,6 +123,7 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
         }
     
     }
+    prevIm_ = currIm_.clone();
     // Track the following camera poses
     if (status_ == GOOD)
     {
@@ -184,18 +194,28 @@ void TrackingKLT::ExtractFeaturesInFrame(const cv::Mat& im) {
 bool TrackingKLT::MonocularMapInitialization(const cv::Mat& im_left,
         const cv::Mat& mask, const cv::Mat& im_clahe) {
 
-bFirstIm_ = false;
-    // Perform the initialization
-auto initialization_status = monoInitializer_->ProcessNewImage(im_left, im_clahe, mask);
 
-if (initialization_status.current_keypoints.empty()) {
-    std::cout << "MonocularMapInitializerKLT: No keypoints found for initialization." << std::endl;
+    // Perform the initialization
+if (bFirstIm_) {
+auto [initialization_status,succs] = monoInitializer_->ProcessNewImage(im_left, im_clahe, mask);
+bFirstIm_ = false;
+firstim = im_left.clone();
+nFramesFromLastKF_++;
+
+return false;
+}
+nFramesFromLastKF_++;
+
+std::cout << "nFramesFromLastKF_: " << nFramesFromLastKF_ << std::endl;
+if(nFramesFromLastKF_ < 100) {
     return false;
 }
-auto initialization_results = initialization_status;
+auto [initialization_status,succs] = monoInitializer_->ProcessNewImage(im_left, im_clahe, mask);
+auto initialization_results = initialization_status;;
 
 vector<float> depths;
-for (int idx = 0; idx < initialization_results.current_keypoints.size(); idx++) {
+std::cout << "Number of landmarks"<< initialization_results.current_landmark_positions.size() << std::endl;
+for (int idx = 0; idx < initialization_results.current_landmark_positions.size(); idx++) {
 Eigen::Vector3f current_landmark_position = initialization_results.current_landmark_positions[idx];
 depths.push_back(current_landmark_position.z());
 }

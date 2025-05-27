@@ -24,6 +24,7 @@
  #include "Matching/lucas_kanade_tracker.h"
  #include "MonocularMapInitializer.h"
  #include "Visualization/FrameVisualizer.h"
+ #include "Visualization/image_viz.h"
  #include <opencv2/opencv.hpp>
  #include <unordered_map>
  class MonocularMapInitializerKLT {
@@ -58,7 +59,7 @@
      MonocularMapInitializerKLT(Options& options, std::shared_ptr<Feature> feature_extractor,
                              std::shared_ptr<CameraModel> calibration);
  
-     InitializationResults ProcessNewImage(const cv::Mat& im, const cv::Mat& im_clahe,
+    std::tuple<InitializationResults,bool> ProcessNewImage(const cv::Mat& im, const cv::Mat& im_clahe,
                           const cv::Mat& mask);
  
  private:
@@ -73,16 +74,16 @@
  
      void UpdateTrackingReference(const cv::Mat& im);
  
-     std::vector<int> FeatureTracksClustering();
+     std::vector<int> FeatureTracksClustering(const cv::Mat& image_to_display);
  
      void ResetInitialization(const cv::Mat& im, const cv::Mat& im_clahe,
                               const cv::Mat& mask);
  
      typedef std::tuple<Sophus::SE3f, std::vector<Eigen::Vector3f>> RigidInitializationResults;
  
-     RigidInitializationResults RigidInitialization();
+     std::tuple<RigidInitializationResults,bool> RigidInitialization();
  
-     InitializationResults InitializationRefinement(std::vector<cv::KeyPoint>& current_keypoints,
+     std::tuple<InitializationResults,bool> InitializationRefinement(std::vector<cv::KeyPoint>& current_keypoints,
                                    std::vector<Eigen::Vector3f>& landmarks_position,
                                    std::vector<int>& feature_labels,
                                    Sophus::SE3f& camera_transform_world);
@@ -103,6 +104,7 @@
      struct FeatureTrack {
          std::vector<cv::KeyPoint> track_;
      };
+     std::shared_ptr<ImageVisualizer> image_visualizer_;
  
      struct FeatureTracks {
          int max_feature_track_lenght = 0;

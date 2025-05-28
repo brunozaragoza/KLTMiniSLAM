@@ -82,12 +82,13 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
     currFrame_.setIm(currIm_);
 
     nframesext++;
-    extractFeatures(im);
+   
 
     visualizer_->drawCurrentFeatures(currFrame_.getKeyPointsDistorted(), currIm_);
     // If no map is initialized, perform monocular initialization
     if (status_ == NOT_INITIALIZED)
     {
+        extractFeatures(im);
       
             if (MonocularMapInitialization())
         {
@@ -119,13 +120,6 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
             Tcw = currFrame_.getPose();
             //updateMotionModel();
             // Promote current frame to KeyFrame
-            pLastKeyFrame_ = shared_ptr<KeyFrame>(new KeyFrame(currFrame_));
-            // Update motion model
-
-            // Insert KeyFrame into the map
-            pMap_->insertKeyFrame(pLastKeyFrame_);
-            visualizer_->drawCurrentFrame(currFrame_);
-            prevIm_ = currIm_.clone();
             
             return true;
         }
@@ -300,11 +294,44 @@ bool TrackingKLT::cameraTracking()
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::erode(global_mask, global_mask, kernel);
     // === [1] KLT Tracking
-    //monoInitializer_->DataAssociation(currIm_, prevIm_, global_mask);
-    std::cout << "DATA ASSOCIATION DONE"<< std::endl;
+        // Copy previous keypoints (CORRECTION 1)
+        std::vector<cv::KeyPoint> pts ;
     
-    Sophus::SE3f currPose= prevFrame_.getPose();
-    currFrame_.setPose(currPose);
+        // Prepare landmark statuses (CORRECTION 2)
+        std::vector<LandmarkStatus> statuses(prevFrame_.LandmarkStatuses().size(), LandmarkStatus::TRACKED);
+    
+        // Run KLT tracking
+        currFrame_.resize(prevFrame_.getKeyPoints().size());
+        currFrame_.setKeyPoints(prevFrame_.getKeyPoints());
+        currFrame_.setLandmarkStatuses(statuses);
+        int nMatches = klt_tracker_.Track(currIm_, currFrame_.getKeyPoints(), statuses,
+                                          true, options_.klt_min_SSIM, global_mask);
+        //convert status to matches using a loop 
+
+
+           // Store tracked keypoints into current frame (CORRECTION 3)
+            currFrame_.setLandmarkStatuses(statuses);
+            currFrame_.resize(pts.size());
+            currFrame_.setKeyPoints(pts);
+            currFrame_.setIm(currIm_);
+            visualizer_->drawCurrentFrame(currFrame_);
+
+            for (int t = 0; t < currFrame_.LandmarkStatuses().size(); t++)
+            {
+                if (currFrame_.LandmarkStatuses()[t] == LandmarkStatus::TRACKED){
+                    vMatches_[t] = 1;
+                }
+                else
+                {
+                    vMatches_[t] = -1;
+                }
+            }                              //draw matches 
+        visualizer_->drawFrameMatches(currFrame_.getKeyPointsDistorted(), currIm_,vMatches_ );
+        visualizer_->updateWindows();
+
+        // === [2] Check if tracking was successful                                          
+    //Sophus::SE3f currPose= prevFrame_.getPose();
+    //currFrame_.setPose(currPose);
 
     /*poseOnlyOptimization(currFrame_);
     

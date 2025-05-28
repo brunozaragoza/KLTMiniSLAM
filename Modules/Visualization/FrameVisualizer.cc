@@ -44,7 +44,10 @@ void FrameVisualizer::drawFrameMatches(std::vector<cv::KeyPoint> &vKeys, cv::Mat
 
     cv::Mat imMatches;
     cv::drawMatches(refIm_,vGoodKeys1,im,vGoodKeys2,vDMatches,imMatches);
+    cv::imwrite("/home/student/MRGCV/Mini-SLAM/matches.png", imMatches);
+
     cv::imshow("Matches between frames", imMatches);
+    //write to image 
 }
 
 void FrameVisualizer::drawMatches(std::vector<cv::KeyPoint> &vKeys1, cv::Mat &im1, std::vector<cv::KeyPoint> &vKeys2, cv::Mat &im2, std::vector<int> &vMatches) {

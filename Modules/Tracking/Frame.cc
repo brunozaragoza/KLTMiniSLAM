@@ -73,7 +73,13 @@ void Frame::setPose(Sophus::SE3f &Tcw) {
 std::vector<cv::KeyPoint>& Frame::getKeyPoints() {
     return vKeys_;
 }
-
+void Frame::resize(int nFeatures){
+    vKeys_.resize(nFeatures);
+    vKeysDis_.resize(nFeatures);
+    descriptors_ = cv::Mat(nFeatures,32,CV_8U);
+    vMapPoints_.resize(nFeatures,nullptr);
+    landmarkstatuses_.resize(nFeatures, LandmarkStatus::TRACKED);
+}
 std::vector<LandmarkStatus>& Frame::LandmarkStatuses(){
     return landmarkstatuses_;
 }

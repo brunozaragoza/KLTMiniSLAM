@@ -59,6 +59,7 @@ set(HEADER_FILES
         ${root}/Features/ORB.h
         ${root}/Features/ShiTomasi.h
         ${root}/Map/KeyFrame.h
+        ${root}/Map/keyframe.h
         ${root}/Map/Map.h
         ${root}/Map/MapPoint.h
         ${root}/Mapping/LocalMapping.h

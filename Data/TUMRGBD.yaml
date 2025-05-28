@@ -43,4 +43,4 @@ Matching.fuse: 50
 Map.minObs: 70
 
 #Min cos parallax to triangulate
-Triangulation.minCos: 0.9998
+Triangulation.minCos: 0.99999

@@ -52,6 +52,7 @@ public:
      * Sets the pose of the Frame
      */
     void setPose(Sophus::SE3f& Tcw);
+    void resize(int nFeatures);
 
     /*
      * Gets all the KeyPoints of the Frame

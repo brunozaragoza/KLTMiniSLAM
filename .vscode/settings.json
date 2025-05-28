@@ -73,6 +73,8 @@
         "core": "cpp",
         "numericaldiff": "cpp",
         "nonlinearoptimization": "cpp",
-        "csetjmp": "cpp"
+        "csetjmp": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp"
     }
 }

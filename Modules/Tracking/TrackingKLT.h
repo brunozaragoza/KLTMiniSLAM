@@ -54,11 +54,11 @@
         int klt_max_iters = 10;
         float klt_epsilon = 0.001;
         float klt_min_eig_th = 1e-4;
-        float klt_min_SSIM = 0.85;
+        float klt_min_SSIM = 0.7;
 
         int images_to_insert_keyframe = 5;
 
-        float radians_per_pixel;
+        float radians_per_pixel=0.01f;
     };
 
      /*

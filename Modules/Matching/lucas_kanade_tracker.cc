@@ -171,6 +171,7 @@ int LucasKanadeTracker::Track(const Mat &newIm, std::vector<KeyPoint> &nextPts,
     vector<LandmarkStatus> &vMatched, const bool bInitialFlow,
     const float minSSIM, const cv::Mat& mask) {
 
+std::cout << "Lucas-Kanade optical flow tracking with " << nextPts.size() << " points." << std::endl;
 
         //Dimensions of half of the window
 Point2f halfWin((winSize_.width - 1) * 0.5f, (winSize_.height - 1) * 0.5f);
@@ -341,10 +342,10 @@ dJptr[0] = (short) jxval;
 dJptr[1] = (short) jyval;
 
 //Compute accum values for later gain and bias computation
-//if(mask.at<uchar>(my,mx) != 0) {
+if(mask.at<uchar>(my,mx) != 0) {
 meanJ += (float) jval;
 meanJ2 += (float) (jval * jval);
-//}
+}
 }
 
 if (vMatched[i] == OUT_IMAGE_BOUNDARIES) {

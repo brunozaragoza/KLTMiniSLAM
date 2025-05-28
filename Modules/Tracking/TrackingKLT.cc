@@ -176,7 +176,25 @@ void TrackingKLT::ExtractFeaturesInFrame(const cv::Mat& im) {
     currFrame_.setLandmarkStatuses(statuses);
     currFrame_.setKeyPoints(currFrame_.getKeyPoints());
 }
+void TrackingKLT::promoteCurrentFrameToKeyFrame() {
+    //Promote current frame to KeyFrame
+    pLastKeyFrame_ = shared_ptr<KeyFrame>(new KeyFrame(currFrame_));
 
+    //Insert KeyFrame into the map
+    pMap_->insertKeyFrame(pLastKeyFrame_);
+
+    //Add all obsevations into the map
+    nLastKeyFrameId = pLastKeyFrame_->getId();
+    vector<shared_ptr<MapPoint>>& vMapPoints = pLastKeyFrame_->getMapPoints();
+    for(int i = 0; i < vMapPoints.size(); i++){
+        MapPoint* pMP = vMapPoints[i].get();
+        if(pMP)
+            pMap_->addObservation(nLastKeyFrameId,pMP->getId(),i);
+    }
+    pMap_->checkKeyFrame(pLastKeyFrame_->getId());
+
+    bInserted = true;
+}
 bool TrackingKLT::MonocularMapInitialization() {
 
 
@@ -297,16 +315,14 @@ bool TrackingKLT::MonocularMapInitialization() {
 bool TrackingKLT::cameraTracking()
 {
     std::cout << "TRACKING"<< std::endl;
-
+    Sophus::SE3f currPose= prevFrame_.getPose();
+    currFrame_.setPose(currPose);
     // === [0] Prepare mask
     //convert currIm    to grayscale if it is not already
     cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::erode(global_mask, global_mask, kernel);
     // === [1] KLT Tracking
-        // Copy previous keypoints (CORRECTION 1)
-    
-        // Prepare landmark statuses (CORRECTION 2)
         std::vector<LandmarkStatus> statuses;
         for (int idx = 0; idx < vMatches_.size(); idx++) {
             if(vMatches_[idx] == -1) {
@@ -328,10 +344,19 @@ bool TrackingKLT::cameraTracking()
                 vMatches_[idx] = -1; // Mark as not tracked
             }
         }
+        for (int i = 0; i < vMatches_.size(); ++i) {
+            if (vMatches_[i] != -1 && statuses[i] == LandmarkStatus::TRACKED) {
+                auto mp = prevFrame_.getMapPoint(i);
+                if (mp) {
+                    currFrame_.setMapPoint(i, mp);  // Transfer 3D point
+                }
+            }
+        }
+ 
         // Update current frame with the tracked keypoints and statuses
         currFrame_.setLandmarkStatuses(statuses);
         klt_tracker_.SetReferenceImage(currIm_, currFrame_.getKeyPoints(), global_mask);
-
+        // add point correspondences to the current frame
         visualizer_->drawFrameMatches(currFrame_.getKeyPoints(), currIm_,vMatches_ );
         visualizer_->updateWindows();
     // === [3] Check if enough points were tracked
@@ -342,11 +367,17 @@ bool TrackingKLT::cameraTracking()
     }
 
     // === [2] Check if tracking was successful                                          
-    //Sophus::SE3f currPose= prevFrame_.getPose();
-    //currFrame_.setPose(currPose);
-   /* std::cout << "Number of Map points: " << currFrame_.getMapPoints().size()<< std::endl;
+    //print the map points coordinates
+    promoteCurrentFrameToKeyFrame();
+
     poseOnlyOptimization(currFrame_);
-    
+
+    // === [4] Update the map with the new pose
+    // Update the map with the new pose
+    // Update the map with the new pose
+
+
+   /* 
     //Tcw.translation() /= scale;
     Sophus::SE3f Twc=currFrame_.getPose();
     std::cout << "Tcw: " << Twc.matrix() << std::endl;

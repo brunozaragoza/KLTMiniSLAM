@@ -92,6 +92,7 @@
  
      //Updates the constan velocity model
      void updateMotionModel();
+     void promoteCurrentFrameToKeyFrame();
 
      int nframesext=0;
  

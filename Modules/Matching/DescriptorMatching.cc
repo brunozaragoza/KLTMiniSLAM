@@ -164,8 +164,6 @@ int searchForInitializaion(Frame& refFrame, Frame& currFrame, int th, vector<int
         cv::drawMatches(refFrame.getIm(), vRefKeys,currFrame.getIm(), vPrevMatched_, matches, img_matches);
     
         // Show result
-        cv::imshow("Matches", img_matches);
-        bool success = cv::imwrite("output.jpg", img_matches);
     return nMatches;
 }
 

@@ -84,7 +84,8 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
     nframesext++;
    
 
-    //visualizer_->drawCurrentFeatures(currFrame_.getKeyPointsDistorted(), currIm_);
+    //visualizer_->drawCurrentFeatures(prevFrame_.getKeyPoints(), currIm_);
+    //visualizer_->updateWindows();
     // If no map is initialized, perform monocular initialization
     if (status_ == NOT_INITIALIZED)
     {
@@ -116,7 +117,7 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
         if (cameraTracking())
         {
 
-            Tcw = currFrame_.getPose();
+            Tcw = prevFrame_.getPose();
             //updateMotionModel();
             
             mapVisualizer_->updateCurrentPose(Tcw);
@@ -315,19 +316,17 @@ bool TrackingKLT::cameraTracking()
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::erode(global_mask, global_mask, kernel);
     // === [1] KLT Tracking
-        std::vector<LandmarkStatus> statuses;
-        for (int idx = 0; idx < vMatches_.size(); idx++) {
-            if(vMatches_[idx] == -1) {
-                statuses.push_back(LandmarkStatus::BAD);
-            } else {
-                statuses.push_back(LandmarkStatus::TRACKED);
-            }
-        }
-        // Run KLT tracking
+        std::vector<LandmarkStatus> statuses(prevFrame_.getKeyPoints().size(),LandmarkStatus::TRACKED);
+        // Run KLT 
+        cv::Mat prevImg=prevFrame_.getIm();
+        visualizer_->drawMatches(currFrame_.getKeyPoints(),currIm_,prevFrame_.getKeyPoints(),prevImg,vMatches_);
         assert(currFrame_.getKeyPoints().size() == statuses.size());
-        int nMatches = klt_tracker_.Track(currIm_, currFrame_.getKeyPoints(), statuses,
+        std::vector<cv::KeyPoint> pts = prevFrame_.getKeyPoints();
+        pts.resize(prevFrame_.getKeyPoints().size());
+        int nMatches = klt_tracker_.Track(currIm_, pts, statuses,
                                           true, options_.klt_min_SSIM, global_mask);
         std::cout << "NMATCHES: " << nMatches << std::endl;
+        currFrame_.setKeyPoints(pts);
         //convert landmark statuses to matches
         for (int idx = 0; idx < vMatches_.size(); idx++) {
             if (statuses[idx] == LandmarkStatus::TRACKED) {

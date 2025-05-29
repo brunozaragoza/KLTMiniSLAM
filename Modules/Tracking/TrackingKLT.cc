@@ -118,16 +118,8 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
 
             Tcw = currFrame_.getPose();
             //updateMotionModel();
-            pLastKeyFrame_ = shared_ptr<KeyFrame>(new KeyFrame(currFrame_));
-            // Insert KeyFrame into the map
-            pMap_->insertKeyFrame(pLastKeyFrame_);
-            // Add all observations into the map
-            nLastKeyFrameId = pLastKeyFrame_->getId();
             
-            // Run a Bundle Adjustment to refine the solution
-            // Promote current frame to KeyFrame
-
-            
+            mapVisualizer_->updateCurrentPose(Tcw);
             return true;
         }
         else
@@ -357,51 +349,18 @@ bool TrackingKLT::cameraTracking()
         currFrame_.setLandmarkStatuses(statuses);
         klt_tracker_.SetReferenceImage(currIm_, currFrame_.getKeyPoints(), global_mask);
         // add point correspondences to the current frame
-        visualizer_->drawFrameMatches(currFrame_.getKeyPoints(), currIm_,vMatches_ );
-        visualizer_->updateWindows();
+        //visualizer_->drawFrameMatches(currFrame_.getKeyPoints(), currIm_,vMatches_ );
+        //visualizer_->updateWindows();
     // === [3] Check if enough points were tracked
     if (nMatches < 30)
     {
         std::cout << "Not enough points tracked: " << nMatches << std::endl;
         return false;
     }
-
-    // === [2] Check if tracking was successful                                          
-    //print the map points coordinates
-    promoteCurrentFrameToKeyFrame();
-
     poseOnlyOptimization(currFrame_);
+    std::cout << "Pose optimization done." << std::endl;
 
-    // === [4] Update the map with the new pose
-    // Update the map with the new pose
-    // Update the map with the new pose
-
-
-   /* 
-    //Tcw.translation() /= scale;
-    Sophus::SE3f Twc=currFrame_.getPose();
-    std::cout << "Tcw: " << Twc.matrix() << std::endl;
-    mapVisualizer_->updateCurrentPose(Twc);
-    
-    //klt_tracker_.SetReferenceImage(currIm_, currFrame_.getKeyPoints(), global_mask);
-    // std::cout << "[DEBUG] currFrame_ Pose:\n" << currFrame_.getPose().matrix() << std::endl;
-    status_ == GOOD;
-    // 1. Promote to keyframe
-pLastKeyFrame_ = std::make_shared<KeyFrame>(currFrame_);
-
-// 2. Insert keyframe into map
-pMap_->insertKeyFrame(pLastKeyFrame_);
-
-// 3. Add observations
-for (int i = 0; i < currFrame_.getMapPoints().size(); ++i) {
-    auto mp = currFrame_.getMapPoint(i);
-    if (mp && currFrame_.LandmarkStatuses()[i] == LandmarkStatus::TRACKED) {
-        pMap_->addObservation(pLastKeyFrame_->getId(), mp->getId(), i);
-    }
-}
-
-nLastKeyFrameId = pLastKeyFrame_->getId();
-*/
+    prevFrame_.assign(currFrame_);
     // === [9] Success if enough tracked
     return true;
 }

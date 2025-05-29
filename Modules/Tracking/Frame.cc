@@ -137,7 +137,7 @@ void Frame::assign(Frame &F) {
     vKeys_.swap(F.vKeys_);
     vKeysDis_.swap(F.vKeysDis_);
     vMapPoints_.swap(F.vMapPoints_);
-    fill(F.vMapPoints_.begin(),F.vMapPoints_.end(), nullptr);
+    //fill(F.vMapPoints_.begin(),F.vMapPoints_.end(), nullptr);
     cv::swap(descriptors_, F.descriptors_);
 
     //Swap feature grid

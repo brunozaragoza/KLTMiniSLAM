@@ -59,7 +59,6 @@ set(HEADER_FILES
         ${root}/Features/ORB.h
         ${root}/Features/ShiTomasi.h
         ${root}/Map/KeyFrame.h
-        ${root}/Map/keyframe.h
         ${root}/Map/Map.h
         ${root}/Map/MapPoint.h
         ${root}/Mapping/LocalMapping.h
@@ -80,7 +79,6 @@ set(HEADER_FILES
         ${root}/Visualization/FrameVisualizer.h
         ${root}/Visualization/image_viz.h
         ${root}/Visualization/color_factory.h
-        
         ${root}/Visualization/MapVisualizer.h)
 
 set(SOURCE_FILES

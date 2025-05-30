@@ -30,7 +30,7 @@ Frame::Frame(const int nFeatures, const int nGridCols, const int nGridRows,
     vKeysDis_ = vector<cv::KeyPoint>(nFeatures);
     descriptors_ = cv::Mat(nFeatures,32,CV_8U);
     vMapPoints_ = vector<shared_ptr<MapPoint>>(nFeatures,nullptr);
-
+    landmarkstatuses_ = vector<LandmarkStatus>(nFeatures,LandmarkStatus::TRACKED);
     calibration_ = calibration;
 
     //Compute image boundaries as distortion can change typical values
@@ -138,6 +138,7 @@ void Frame::assign(Frame &F) {
     vKeysDis_.swap(F.vKeysDis_);
     vMapPoints_.swap(F.vMapPoints_);
     //fill(F.vMapPoints_.begin(),F.vMapPoints_.end(), nullptr);
+    cv::swap(landmarkstatuses_, F.landmarkstatuses_);
     cv::swap(descriptors_, F.descriptors_);
 
     //Swap feature grid

@@ -308,26 +308,23 @@ bool TrackingKLT::MonocularMapInitialization() {
 bool TrackingKLT::cameraTracking()
 {
     std::cout << "TRACKING"<< std::endl;
-    Sophus::SE3f currPose= prevFrame_.getPose();
-    currFrame_.setPose(currPose);
+
     // === [0] Prepare mask
     //convert currIm    to grayscale if it is not already
     cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::erode(global_mask, global_mask, kernel);
     // === [1] KLT Tracking
-        std::vector<LandmarkStatus> statuses(prevFrame_.getKeyPoints().size(),LandmarkStatus::TRACKED);
-        // Run KLT 
-        cv::Mat prevImg=prevFrame_.getIm();
+    cv::Mat prevImg=prevFrame_.getIm();
         visualizer_->drawMatches(currFrame_.getKeyPoints(),currIm_,prevFrame_.getKeyPoints(),prevImg,vMatches_);
-        assert(currFrame_.getKeyPoints().size() == statuses.size());
-        std::vector<cv::KeyPoint> pts = prevFrame_.getKeyPoints();
-        pts.resize(prevFrame_.getKeyPoints().size());
-        int nMatches = klt_tracker_.Track(currIm_, pts, statuses,
+        int nMatches = klt_tracker_.Track(currIm_, currFrame_.getKeyPoints(), currFrame_.LandmarkStatuses(),
                                           true, options_.klt_min_SSIM, global_mask);
         std::cout << "NMATCHES: " << nMatches << std::endl;
-        currFrame_.setKeyPoints(pts);
-        //convert landmark statuses to matches
+        
+
+        //draw matches 
+        std::vector<LandmarkStatus> statuses(prevFrame_.getKeyPoints().size(),LandmarkStatus::TRACKED);
+        statuses=currFrame_.LandmarkStatuses();
         for (int idx = 0; idx < vMatches_.size(); idx++) {
             if (statuses[idx] == LandmarkStatus::TRACKED) {
                 vMatches_[idx] = idx; // Keep the index if tracked
@@ -343,24 +340,21 @@ bool TrackingKLT::cameraTracking()
                 }
             }
         }
- 
-        // Update current frame with the tracked keypoints and statuses
-        currFrame_.setLandmarkStatuses(statuses);
-        klt_tracker_.SetReferenceImage(currIm_, currFrame_.getKeyPoints(), global_mask);
-        // add point correspondences to the current frame
-        //visualizer_->drawFrameMatches(currFrame_.getKeyPoints(), currIm_,vMatches_ );
-        //visualizer_->updateWindows();
+        
+        
     // === [3] Check if enough points were tracked
-    if (nMatches < 30)
+    if (nMatches < 70)
     {
         std::cout << "Not enough points tracked: " << nMatches << std::endl;
         return false;
     }
+    
+    //pose optimization
     poseOnlyOptimization(currFrame_);
     std::cout << "Pose optimization done." << std::endl;
-
+    //assign frame
     prevFrame_.assign(currFrame_);
-    // === [9] Success if enough tracked
+    klt_tracker_.SetReferenceImage(currIm_, currFrame_.getKeyPoints(), global_mask);
     return true;
 }
 

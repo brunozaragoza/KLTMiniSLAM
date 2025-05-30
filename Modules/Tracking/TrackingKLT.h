@@ -50,11 +50,11 @@
     TrackingKLT();
     struct Options {
         int klt_window_size = 7;
-        int klt_max_level = 4;
+        int klt_max_level = 3;
         int klt_max_iters = 100;
         float klt_epsilon = 0.001;
         float klt_min_eig_th = 1e-4;
-        float klt_min_SSIM = 0.55;
+        float klt_min_SSIM = 0.2;
 
         int images_to_insert_keyframe = 5;
 

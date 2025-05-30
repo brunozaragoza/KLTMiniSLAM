@@ -84,8 +84,8 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
     nframesext++;
    
 
-    //visualizer_->drawCurrentFeatures(prevFrame_.getKeyPoints(), currIm_);
-    //visualizer_->updateWindows();
+    visualizer_->drawCurrentFeatures(currFrame_.getKeyPoints(), currIm_);
+    visualizer_->updateWindows();
     // If no map is initialized, perform monocular initialization
     if (status_ == NOT_INITIALIZED)
     {
@@ -315,40 +315,29 @@ bool TrackingKLT::cameraTracking()
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::erode(global_mask, global_mask, kernel);
     // === [1] KLT Tracking
-    cv::Mat prevImg=prevFrame_.getIm();
-        visualizer_->drawMatches(currFrame_.getKeyPoints(),currIm_,prevFrame_.getKeyPoints(),prevImg,vMatches_);
         int nMatches = klt_tracker_.Track(currIm_, currFrame_.getKeyPoints(), currFrame_.LandmarkStatuses(),
                                           true, options_.klt_min_SSIM, global_mask);
-        std::cout << "NMATCHES: " << nMatches << std::endl;
-        
-
-        //draw matches 
-        std::vector<LandmarkStatus> statuses(prevFrame_.getKeyPoints().size(),LandmarkStatus::TRACKED);
-        statuses=currFrame_.LandmarkStatuses();
-        for (int idx = 0; idx < vMatches_.size(); idx++) {
-            if (statuses[idx] == LandmarkStatus::TRACKED) {
-                vMatches_[idx] = idx; // Keep the index if tracked
-            } else {
-                vMatches_[idx] = -1; // Mark as not tracked
-            }
-        }
-        for (int i = 0; i < vMatches_.size(); ++i) {
-            if (vMatches_[i] != -1 && statuses[i] == LandmarkStatus::TRACKED) {
-                auto mp = prevFrame_.getMapPoint(i);
-                if (mp) {
-                    currFrame_.setMapPoint(i, mp);  // Transfer 3D point
-                }
-            }
-        }
-        
+        std::cout << "NMATCHES: " << nMatches << std::endl;        
         
     // === [3] Check if enough points were tracked
-    if (nMatches < 70)
+    if (nMatches < 120)
     {
         std::cout << "Not enough points tracked: " << nMatches << std::endl;
         return false;
     }
-    
+    //draw 
+    std::vector<LandmarkStatus> statuses=currFrame_.LandmarkStatuses();
+    std::vector<int> matches;
+    for (int idx = 0; idx < vMatches_.size(); idx++) {
+        if (statuses[idx] == LandmarkStatus::TRACKED) {
+            matches.push_back(idx); // Keep the index if tracked
+        } else {
+            matches.push_back(-1); // Mark as not tracked
+        }
+    }
+    cv::Mat prevImg=prevFrame_.getIm();
+    visualizer_->drawMatches(currFrame_.getKeyPoints(),currIm_,prevFrame_.getKeyPoints(),prevImg,matches);
+
     //pose optimization
     poseOnlyOptimization(currFrame_);
     std::cout << "Pose optimization done." << std::endl;

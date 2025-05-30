@@ -296,14 +296,16 @@ bool TrackingKLT::cameraTracking()
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::erode(global_mask, global_mask, kernel);
     // === [1] KLT Tracking
+        std::vector<cv::KeyPoint> pts = currFrame_->getKeyPoints();
         std::vector<LandmarkStatus> status(currFrame_->getKeyPoints().size(),LandmarkStatus::TRACKED);
-        auto pts= currFrame_->getKeyPoints();
-        std::cout<< "STATUS"<<status.size()<<std::endl;
-        std::cout<< "PTS"<<pts.size()<<std::endl;
         int nMatches = klt_tracker_.Track(currIm_, currFrame_->getKeyPoints(),status ,
                                           true, options_.klt_min_SSIM, global_mask);
+        
+        klt_tracker_.SetReferenceImage(currIm_, pts, global_mask);
+
+        
         std::cout << "NMATCHES: " << nMatches << std::endl;        
-        currFrame_->setKeyPoints(pts);
+        //currFrame_->setKeyPoints(pts);
     // === [3] Check if enough points were tracked
     if (nMatches < 30)
     {
@@ -320,7 +322,6 @@ bool TrackingKLT::cameraTracking()
     mapVisualizer_->updateCurrentPose(Tcwc);
     //assign frame
     //prevFrame_->assign(*currFrame_);
-    klt_tracker_.SetReferenceImage(currIm_, currFrame_->getKeyPoints(), global_mask);
     return true;
 }
 

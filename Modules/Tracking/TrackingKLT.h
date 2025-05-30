@@ -101,7 +101,7 @@
      std::shared_ptr<Descriptor> descExtractor_;
  
      //Reference and current frame
-     Frame currFrame_, prevFrame_;
+     std::shared_ptr<Frame> currFrame_, prevFrame_;
  
      //Last location a KeyPoint was seen. Only used in the monocular initialization
      std::vector<cv::Point2f> vPrevMatched_;

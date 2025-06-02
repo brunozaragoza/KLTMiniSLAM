@@ -155,19 +155,19 @@ int poseOnlyOptimization(Frame& currFrame){
     optimizer.addVertex(vSE3);
 
     //Set edges
-    vector<MapPoint_>& vMapPoints = currFrame.getMapPoints();
+    vector<MapPoint_> vMapPoints = currFrame.GetLandmarkPointersWithStatus({TRACKED_WITH_3D});
     vector<EdgeSE3ProjectXYZOnlyPose*> vVertex(vMapPoints.size(),nullptr);
     vector<bool> vInlier(vMapPoints.size(),false);
-
-    for(size_t i = 0; i < vMapPoints.size(); i++){
+     std::vector<cv::KeyPoint> pts = currFrame.GetKeypointsWithStatus({TRACKED_WITH_3D});
+     for(size_t i = 0; i < vMapPoints.size(); i++){
         MapPoint_ pMP = vMapPoints[i];
 
         if(!pMP){
             continue;
         }
 
-        cv::Point2f uv = currFrame.getKeyPoint(i).pt;
-        int octave = currFrame.getKeyPoint(i).octave;
+        cv::Point2f uv = pts[i].pt;
+        int octave = pts[i].octave;
         Eigen::Matrix<double,2,1> obs;
         obs << uv.x, uv.y;
 

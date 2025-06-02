@@ -54,7 +54,7 @@
         int klt_max_iters = 10;
         float klt_epsilon = 0.001;
         float klt_min_eig_th = 1e-4;
-        float klt_min_SSIM = 0.7;
+        float klt_min_SSIM = 0.5;
 
         int images_to_insert_keyframe = 5;
 

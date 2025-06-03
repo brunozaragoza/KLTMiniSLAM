@@ -53,10 +53,7 @@
                                                const cv::Mat& mask) {
      // Track features and update the feature tracks.
      DataAssociation(im, im_clahe, mask);
-//     image_visualizer_->DrawFeatures(current_keypoints_, im, "Current Keypoints");
-  //   image_visualizer_->UpdateWindows();
-    //image_visualizer_->SetCurrentImage(im, im_clahe);
-               if (internal_status_ == RECENTLY_RESET) {
+    if (internal_status_ == RECENTLY_RESET) {
         return std::tuple<InitializationResults,bool>(InitializationResults{Sophus::SE3f(), {}, {}, {}, {}},false);
     }
                                                 
@@ -237,7 +234,6 @@ std::tuple<MonocularMapInitializerKLT::RigidInitializationResults,bool> Monocula
      Sophus::SE3f camera_transform_world;
      std::vector<Eigen::Vector3f> landmarks_position;
     //convert status if tracked to -1 or 1
-    std::cout << "RIGIDDDDDDDDDDDD"<< std::endl;
      if (current_keypoints_.size() < 10) {
          std::cerr << "MonocularMapInitializerKLT: Not enough keypoints for rigid initialization." << std::endl;
          return make_tuple(make_tuple(camera_transform_world, landmarks_position),false);
@@ -245,22 +241,11 @@ std::tuple<MonocularMapInitializerKLT::RigidInitializationResults,bool> Monocula
  
      // Convert current keypoint statuses to the format expected by the initializer.
      // 1 for tracked, -1 for not tracked.
-    std::vector<int> current_keypoint_statuses_format;
-    for(const auto& status_ : current_keypoint_statuses_) {
-         if (status_ == TRACKED ) {
-             current_keypoint_statuses_format.push_back(1);
-         } else {
-             current_keypoint_statuses_format.push_back(-1);
-         }
-     }
- 
+     std::vector<int> current_keypoint_statuses_format(current_keypoints_.size(),-1);
      // Initialize the monocular map initializer.
      std::vector<bool> vTriangulated;
-     std::cout << "MonocularMapInitializerKLT: Rigid initialization with "
-               << current_keypoints_.size() << " keypoints." << std::endl;
-    std::cout << "NTRACKS"<< n_tracks_in_image_ << std::endl; 
-    vTriangulated.resize(n_tracks_in_image_, false);
-     landmarks_position.resize(n_tracks_in_image_);
+    vTriangulated.resize(current_keypoints_.size(), false);
+     landmarks_position.resize(current_keypoints_.size());
     // std::cout << "VTriangulated size: " << vTriangulated.size() << std::endl;
     //std::cout << "MonocularMapInitializerKLT: Rigid initialization with " << current_keypoints_.size() << " keypoints." <<  std::endl;
      //std::cout << "MonocularMapInitializerKLT: Rigid initialization with " << current_keypoint_statuses_format.size() << " keypoints." <<  std::endl;
@@ -272,6 +257,9 @@ std::tuple<MonocularMapInitializerKLT::RigidInitializationResults,bool> Monocula
                                                  camera_transform_world,
                                                  landmarks_position,
                                                 vTriangulated);
+
+    for(int i=0;i<landmarks_position.size();i++)
+        std::cout << "PTS"<< landmarks_position[i]<<std::endl;
     //update point tracked with the triangulated points
         for (int idx = 0; idx < current_keypoint_statuses_format.size(); idx++) {
             if (vTriangulated[idx]) {
@@ -280,7 +268,6 @@ std::tuple<MonocularMapInitializerKLT::RigidInitializationResults,bool> Monocula
                 current_keypoint_statuses_[idx] = TRACKED;
             }
         }
-        std::cout << "Number of Landmarks N"<< landmarks_position.size() << std::endl;
  
      if (landmarks_position.size() == 0) {
         std::cerr << "MonocularMapInitializerKLT: Rigid initialization failed: " << std::endl;
@@ -302,7 +289,11 @@ std::tuple<MonocularMapInitializerKLT::RigidInitializationResults,bool> Monocula
      vector<Sophus::SE3f> camera_trajectory;
      std::cout << "MonocularMapInitializerKLT: Refining initialization with "
        << landmarks_position.size() << " landmarks." << std::endl;
-     const int track_leghth = feature_tracks_.max_feature_track_lenght;
+       std::cout << "MonocularMapInitializerKLT: Refining initialization with "
+       << current_keypoints.size() << " keypoints." << std::endl;
+ 
+    
+       const int track_leghth = feature_tracks_.max_feature_track_lenght;
     
     std::cout <<"TRACK LENGTH: " << track_leghth << std::endl;
                                                        
@@ -311,22 +302,22 @@ std::tuple<MonocularMapInitializerKLT::RigidInitializationResults,bool> Monocula
         
         int feature_id = current_keypoints[idx].class_id;
 
-       // if (feature_tracks_.feature_id_to_feature_track[feature_id].track_.size() !=
-         //   feature_tracks_.max_feature_track_lenght) {
-           // continue;
-        //}
+       if (feature_tracks_.feature_id_to_feature_track[feature_id].track_.size() !=
+            feature_tracks_.max_feature_track_lenght) {
+            continue;
+        }
 
         feature_tracks.push_back(feature_tracks_.feature_id_to_feature_track[feature_id].track_);
-        std::cout << "MonocularMapInitializerKLT: Adding feature track with ID: " << feature_id << std::endl;
         track_labels.push_back(feature_labels[idx]);
         vector<Eigen::Vector3f> landmark_track(track_leghth, landmarks_position[idx]);
         landmark_tracks.push_back(landmark_track);
+    
      }
-     
      std::cout << "MonocularMapInitializerKLT: Building initialization results with "
-    << feature_tracks.size() << " feature tracks." << std::endl;
-     std::cout << "MonocularMapInitializerKLT: Building initialization results with "
-     << landmark_tracks.size() << " landmakr tracks." << std::endl;
+     << feature_tracks.size() << " feature tracks." << std::endl;
+      std::cout << "MonocularMapInitializerKLT: Building initialization results with "
+      << landmark_tracks.size() << " landmakr tracks." << std::endl;
+  
 
      // Interpolate camera trajectory.
      camera_trajectory.resize(track_leghth);
@@ -354,14 +345,14 @@ std::tuple<MonocularMapInitializerKLT::RigidInitializationResults,bool> Monocula
      initialization_results.camera_transform_world = camera_trajectory.back();
  
      vector<float> initial_depths;
- 
+     std::cout << "Feature tracks"<< feature_tracks.size()<<std::endl;  
+     std::cout << "LandMark tracks"<< landmark_tracks.size()<<std::endl;                                                
      for (int idx = 0; idx < feature_tracks.size(); idx++) {
          cv::KeyPoint reference_keypoint(feature_tracks[idx].front());
          cv::KeyPoint current_keypoint(feature_tracks[idx].back());
  
          Eigen::Vector3f reference_landmark_position = landmark_tracks[idx].front();
          Eigen::Vector3f current_landmark_position = landmark_tracks[idx].back();
- 
          initial_depths.push_back(reference_landmark_position.z());
  
          initialization_results.reference_keypoints.push_back(reference_keypoint);

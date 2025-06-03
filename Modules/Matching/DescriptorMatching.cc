@@ -256,6 +256,9 @@ int searchWithProjection(Frame& currFrame, int th, std::vector<std::shared_ptr<M
             currFrame.setMapPoint(bestIdx, pMP);
             nMatches++;
         }
+        else{
+            currFrame.setMapPoint(bestIdx, nullptr);
+        }
     }
 
     return nMatches;

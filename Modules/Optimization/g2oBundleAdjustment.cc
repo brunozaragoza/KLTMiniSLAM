@@ -165,7 +165,6 @@ int poseOnlyOptimization(Frame& currFrame){
         if(!pMP){
             continue;
         }
-
         cv::Point2f uv = pts[i].pt;
         int octave = pts[i].octave;
         Eigen::Matrix<double,2,1> obs;

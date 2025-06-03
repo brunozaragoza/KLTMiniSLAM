@@ -38,7 +38,7 @@
  #include "Matching/landmarkstatus.h"
  #include <Visualization/FrameVisualizer.h>
  #include <Visualization/MapVisualizer.h>
- 
+ #include "Tracking/monocularmapinit.h"
  #include <sophus/se3.hpp>
  
  #include <opencv2/opencv.hpp>
@@ -54,7 +54,7 @@
         int klt_max_iters = 10;
         float klt_epsilon = 0.001;
         float klt_min_eig_th = 1e-4;
-        float klt_min_SSIM = 0.5;
+        float klt_min_SSIM = 0.7;
 
         int images_to_insert_keyframe = 5;
 
@@ -80,12 +80,15 @@
      LucasKanadeTracker klt_tracker_;
      //Extracts features and descriptors in the current image
      void extractFeatures(const cv::Mat& im);
+     void extractFeaturesShi(const cv::Mat& im);
  
      //Updates MapPoints in the reference frame as the local mapping may have changed them
      void updateLastPose();
  
      //Initializes a new map from monocuar 2 views
      bool MonocularMapInitialization();
+     bool MonocularMapInitializationKLT(const cv::Mat& im_left,
+        const cv::Mat& mask, const cv::Mat& im_clahe);
  
      //Performs the camera tracking with a constant velocity model
      bool cameraTracking();
@@ -97,6 +100,7 @@
      int nframesext=0;
  
      //Feature and descriptor extractors
+     std::shared_ptr<Feature> featExtractor_2;
      std::shared_ptr<Feature> featExtractor_;
      std::shared_ptr<Descriptor> descExtractor_;
  
@@ -122,7 +126,7 @@
  
      //Monocular map initializer
      std::shared_ptr<MonocularMapInitializer> monoInitializer_;
- 
+     std::shared_ptr<MonocularMapInitializerKLT> monoInitializerKlt_;
      //SLAM map
      std::shared_ptr<Map> pMap_;
  
@@ -147,6 +151,10 @@
      int nFramesFromLastKF_;
      bool bInserted;
      int nLastFeatureExtract=0;
+     std::vector<std::shared_ptr<MapPoint>> mapPts;
+     std::vector<Eigen::Vector3f> mapPtsEigen;
+     std::vector<cv::Point3f> cvPoints;
+     cv::Mat calib;
      //Settings of the system
      Settings settings_;
  };

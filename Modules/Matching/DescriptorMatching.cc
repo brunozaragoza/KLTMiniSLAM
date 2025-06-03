@@ -16,6 +16,7 @@
 */
 
 #include "DescriptorMatching.h"
+#include "Utils/Geometry.h"
 
 using namespace std;
 
@@ -35,55 +36,6 @@ int HammingDistance(const cv::Mat &a, const cv::Mat &b){
     return dist;
 }
 
-int kltMatching(Frame& refFrame, Frame& currFrame, int th, std::vector<int>& vMatches) {
-    const std::vector<cv::KeyPoint>& vRefKeys = refFrame.getKeyPoints();
-    const std::vector<cv::KeyPoint>& vCurrKeys = currFrame.getKeyPoints();
-
-    cv::Mat refDesc = refFrame.getDescriptors();
-    cv::Mat currDesc = currFrame.getDescriptors();
-
-    // Sanity checks
-    if (refDesc.empty() || currDesc.empty()) {
-        std::cerr << "ERROR: Descriptor matrix is empty!\n";
-        return 0;
-    }
-
-    if (refDesc.rows != vRefKeys.size() || currDesc.rows != vCurrKeys.size()) {
-        std::cerr << "ERROR: Descriptor size mismatch with keypoints!\n";
-        return 0;
-    }
-
-    vMatches.clear();
-    vMatches.resize(vRefKeys.size(), -1);
-
-    int nMatches = 0;
-
-    for (size_t i = 0; i < vRefKeys.size(); i++) {
-        const cv::Mat desc = refDesc.row(i);
-
-        int bestDist = 256, secondBestDist = 256;
-        int bestIdx = -1;
-
-        for (size_t j = 0; j < vCurrKeys.size(); j++) {
-            int dist = HammingDistance(desc, currDesc.row(j));
-            if (dist < bestDist) {
-                secondBestDist = bestDist;
-                bestDist = dist;
-                bestIdx = j;
-            } else if (dist < secondBestDist) {
-                secondBestDist = dist;
-            }
-        }
-
-        if (bestDist <= th && bestDist < 0.9f * secondBestDist) {
-            vMatches[i] = bestIdx;
-            ++nMatches;
-        }
-    }
-
-    std::cout << "KLT Matching: Found " << nMatches << " matches." << std::endl;
-    return nMatches;
-}
 
 int searchForInitializaion(Frame& refFrame, Frame& currFrame, int th, vector<int>& vMatches, std::vector<cv::Point2f>& vPrevMatched){
     fill(vMatches.begin(),vMatches.end(),-1);
@@ -106,45 +58,49 @@ int searchForInitializaion(Frame& refFrame, Frame& currFrame, int th, vector<int
             continue;
         }
 
-        //Clear previous matches
-        vIndicesToCheck.clear();
+        // Taken from guidedMatching:
+        // windowSizeFactor = 1, octave scale factor = 1
+        float radius = 15;
 
-        //Get last octave in which the point was seen
-        int nLastOctave = vRefKeys[i].octave;
-        //Search radius depends on the size of the point in the image
-        float radius = 15 * 3 * currFrame.getScaleFactor(nLastOctave);
-        //Get candidates whose coordinates are close to the current point
-        currFrame.getFeaturesInArea(vRefKeys[i].pt.x, vRefKeys[i].pt.y, radius, nLastOctave-1, nLastOctave+1, vIndicesToCheck);
+        // Get candidates whose coordinates are close to the current point
+        cv::Point2f uv = vRefKeys[i].pt;
+        currFrame.getFeaturesInArea(uv.x, uv.y, radius, minOctave, maxOctave,
+                                    vIndicesToCheck);
 
-        cv::Mat desc = refDesc.row(i);
-
-        //Match with the one with the smallest Hamming distance
+        // Match with the one with the smallest Hamming distance
+        float secondNeighbourRatio = 0.9f;
         int bestDist = 255, secondBestDist = 255;
-        size_t bestIdx;        
-        for(auto j : vIndicesToCheck){
+        size_t bestIdx;
+        for (auto j : vIndicesToCheck) {
+            if (currFrame.getMapPoint(j)) {
+                continue;
+            }
 
-            int dist = HammingDistance(desc,currDesc.row(j));
+            int dist = HammingDistance(refDesc.row(i), currDesc.row(j));
 
-            if(dist < bestDist){
+            if (vMatchedDistance[j] <= dist) continue;
+
+            if (dist < bestDist) {
                 secondBestDist = bestDist;
                 bestDist = dist;
                 bestIdx = j;
-            }
-            else if(dist < secondBestDist){
+            } else if (dist < secondBestDist) {
                 secondBestDist = dist;
             }
         }
-        if(bestDist <= th && (float)bestDist < (float(secondBestDist)*0.9)){
-            vMatches[i] = bestIdx;
-            vPrevMatched[i]=currFrame.getKeyPoint(bestIdx).pt;
+        if (bestDist <= th &&
+            (float)bestDist < (float(secondBestDist) * secondNeighbourRatio)) {
+            if (vnMatches21[bestIdx] >= 0) {
+                vMatches[vnMatches21[bestIdx]] = -1;
+                nMatches--;
+            }
 
+            vMatches[i] = bestIdx;
+            vnMatches21[bestIdx] = i;
+            vMatchedDistance[bestIdx] = bestDist;
             nMatches++;
         }
-
-
     }
-
-    std::vector<cv::KeyPoint> vPrevMatched_= currFrame.getKeyPoints();
 
     for(size_t i = 0; i < vMatches.size(); i++){
         if(vMatches[i] != -1){
@@ -152,18 +108,6 @@ int searchForInitializaion(Frame& refFrame, Frame& currFrame, int th, vector<int
         }
     }
 
-
-        // Draw matches
-        std::vector<cv::DMatch> matches;
-        for(size_t i = 0; i < vMatches.size(); i++){
-            if(vMatches[i] != -1){
-                matches.push_back(cv::DMatch(i,vMatches[i],0));
-            }
-        }
-        cv::Mat img_matches;
-        cv::drawMatches(refFrame.getIm(), vRefKeys,currFrame.getIm(), vPrevMatched_, matches, img_matches);
-    
-        // Show result
     return nMatches;
 }
 
@@ -278,43 +222,40 @@ int searchWithProjection(Frame& currFrame, int th, std::vector<std::shared_ptr<M
         else
             radius *= 4.0;
 
-
-        currFrame.getFeaturesInArea(uv.x,uv.y,radius,predictedOctave-1,predictedOctave+1,vIndicesToCheck);
+        // Depth must be positive
+        if (p3Dc(2) < 0.0f) {
+            continue;
+        }
+        
+        currFrame.getFeaturesInArea(uv.x, uv.y, radius, predictedOctave - 1,
+                                    predictedOctave + 1, vIndicesToCheck);
 
         cv::Mat desc = pMP->getDescriptor();
 
-        //Match with the one with the smallest Hamming distance
+        float secondNeighbourRatio = 0.9f;
         int bestDist = 255, secondBestDist = 255;
         size_t bestIdx;
-        int hd = 0;
-        auto all_descr = currFrame.getDescriptors();
-
-        for(auto j : vIndicesToCheck){
-            if(currFrame.getMapPoint(j)){
+        for (auto j : vIndicesToCheck) {
+            if (currFrame.getMapPoint(j)) {
                 continue;
             }
 
-            hd = HammingDistance(desc.row(0),all_descr.row(j));
+            int dist =
+                HammingDistance(desc.row(0), currFrame.getDescriptors().row(j));
 
-            if(hd < bestDist){
+            if (dist < bestDist) {
                 secondBestDist = bestDist;
-                bestDist = hd;
+                bestDist = dist;
                 bestIdx = j;
-            }
-            else if(hd < secondBestDist){
-                secondBestDist = hd;
+            } else if (dist < secondBestDist) {
+                secondBestDist = dist;
             }
         }
-
-        if(bestDist <= th && (float)bestDist < (float(secondBestDist)*0.9)){
-            currFrame.setMapPoint(bestIdx,pMP);
-
+        if (bestDist <= th &&
+            (float)bestDist < (float(secondBestDist) * secondNeighbourRatio)) {
+            currFrame.setMapPoint(bestIdx, pMP);
             nMatches++;
         }
-        else{
-            noClose++;
-        }
-
     }
 
     return nMatches;
@@ -394,105 +335,3 @@ int searchForTriangulation(KeyFrame* kf1, KeyFrame* kf2, int th, float fEpipolar
 
     return nMatches;
 }
-
-int fuse(std::shared_ptr<KeyFrame> pKF, int th, std::vector<std::shared_ptr<MapPoint>>& vMapPoints, Map* pMap){
-    Sophus::SE3f Tcw = pKF->getPose();
-    shared_ptr<CameraModel> calibration = pKF->getCalibration();
-
-    vector<size_t> vIndicesToCheck(100);
-
-    vector<shared_ptr<MapPoint>>& vKFMps = pKF->getMapPoints();
-
-    cv::Mat descMat = pKF->getDescriptors();
-    int nFused = 0;
-
-    for(size_t i = 0; i < vMapPoints.size(); i++){
-        //Clear previous matches
-        vIndicesToCheck.clear();
-
-        shared_ptr<MapPoint> pMP = vMapPoints[i];
-
-        if(!pMP)
-            continue;
-
-        if(pMap->getNumberOfObservations(pMP->getId()) == 0)
-            continue;
-
-        if(pMap->isMapPointInKeyFrame(pMP->getId(),pKF->getId()) != -1){
-            continue;
-        }
-
-
-        // From here: task3
-
-        //Project MapPoint into the Frame
-        Eigen::Vector3f p3Dc = Tcw*pMP->getWorldPosition();
-        //check if its in front of the camera (Sanity check)
-        if(p3Dc.z() < 0)
-        {
-            continue;
-        }
-
-        cv::Point2f uv = calibration->project(p3Dc);
-        //Check if projection is inside the image (Sanity check)
-
-        //Search radius depends on the size of the point in the image
-        //get the octave of the keypoint
-        int octave = pKF->getKeyPoint(i).octave;
-        float radius = 15 * pKF->getScaleFactor(octave);
-        //Get candidates whose coordinates are close to the current point
-        pKF->getFeaturesInArea(uv.x,uv.y,radius,octave-1,octave+1,vIndicesToCheck);
-
-        //Compare descriptors using hamming distance
-        cv::Mat desc = pMP->getDescriptor();
-        //Match with the one with the smallest Hamming distance
-        int bestDist = 255, secondBestDist = 255;
-        size_t bestIdx;
-        for(auto j : vIndicesToCheck){
-            //Check if the point is already associated to a map point
-            if(pKF->getMapPoints()[j]){
-                continue;
-            }
-
-            int dist = HammingDistance(desc.row(0),descMat.row(j));
-
-            if(dist < bestDist){
-                secondBestDist = bestDist;
-                bestDist = dist;
-                bestIdx = j;
-            }
-            else if(dist < secondBestDist){
-                secondBestDist = dist;
-            }
-        }
-
-        if (bestDist > th || (float)bestDist >= (float)secondBestDist * 0.9)
-        {
-            continue;
-        }
-
-        //Fuse the points or add an observation
-        // If the matched KeyPoint has no MapPoint associated, just add the observation.
-        // Otherwise fuse both MapPoints into a single one, and add the observation.
-        // if (!pKF->getMapPoints()[bestIdx]) {
-        //     //void Map::addObservation(ID kfId, ID mpId, size_t idx)
-        //     pMap->addObservation(pKF->getId(), pMP->getId(), i);
-        // } else {
-        //     shared_ptr<MapPoint> pMP2 = pKF->getMapPoints()[bestIdx];
-        //     pMap->fuseMapPoints(vpMPS[i]->getId(), pMP2->getId());
-        //     pMap->addObservation(bestIdx, pMP2);
-        // }
-
-        //what Victor said in the email:
-        if (pKF->getMapPoints()[bestIdx]) {
-            pMap->fuseMapPoints(pMP->getId(), vKFMps[bestIdx]->getId());
-        } else {
-            pKF->setMapPoint(bestIdx, pMP);
-            pMap->addObservation(pKF->getId(), pMP->getId(), bestIdx);
-        }
-
-    }
-
-    return nFused;
-}
-

@@ -83,7 +83,7 @@ void Frame::resize(int nFeatures)
     vKeysDis_.resize(nFeatures);
     descriptors_ = cv::Mat(nFeatures, 32, CV_8U);
     vMapPoints_.resize(nFeatures, nullptr);
-    landmarkstatuses_.resize(nFeatures, LandmarkStatus::TRACKED);
+    landmarkstatuses_.resize(nFeatures, LandmarkStatus::BAD);
 }
 std::vector<LandmarkStatus> &Frame::LandmarkStatuses()
 {

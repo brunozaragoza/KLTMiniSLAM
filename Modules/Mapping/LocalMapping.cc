@@ -208,7 +208,7 @@ void LocalMapping::triangulateNewMapPoints() {
 }
 
 void LocalMapping::checkDuplicatedMapPoints() {
-    vector<pair<ID,int>> vKFcovisible = pMap_->getCovisibleKeyFrames(currKeyFrame_->getId());
+/*    vector<pair<ID,int>> vKFcovisible = pMap_->getCovisibleKeyFrames(currKeyFrame_->getId());
     vector<shared_ptr<MapPoint>> vCurrMapPoints = currKeyFrame_->getMapPoints();
 
     for(int i = 0; i < vKFcovisible.size(); i++){
@@ -217,5 +217,5 @@ void LocalMapping::checkDuplicatedMapPoints() {
         int nFused = fuse(pMap_->getKeyFrame(vKFcovisible[i].first),settings_.getMatchingFuseTh(),vCurrMapPoints,pMap_.get());
         pMap_->checkKeyFrame(vKFcovisible[i].first);
         pMap_->checkKeyFrame(currKeyFrame_->getId());
-    }
+    }*/
 }

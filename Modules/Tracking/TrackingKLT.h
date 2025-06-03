@@ -50,7 +50,7 @@
     TrackingKLT();
     struct Options {
         int klt_window_size = 7;
-        int klt_max_level = 3;
+        int klt_max_level = 4;
         int klt_max_iters = 10;
         float klt_epsilon = 0.001;
         float klt_min_eig_th = 1e-4;

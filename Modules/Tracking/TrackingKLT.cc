@@ -193,6 +193,10 @@ bool TrackingKLT::MonocularMapInitialization()
     }
 
     // find the points corresponding to the matches
+    for(int i=0;i<currFrame_->getKeyPoints().size();i++){
+        if(vMatches_[i]==-1) continue;
+        currFrame_->LandmarkStatuses()[vMatches_[i]]==LandmarkStatus::TRACKED; 
+    }
 
     // Get map scale
     vector<float> vDepths;
@@ -278,16 +282,13 @@ bool TrackingKLT::MonocularMapInitialization()
 bool TrackingKLT::cameraTracking()
 {
     std::cout << "TRACKING" << std::endl;
-    Sophus::SE3f Tcwcc = currFrame_->getPose();
-    currFrame_->setPose(Tcwcc);
     // === [0] Prepare mask
     // convert currIm    to grayscale if it is not already
     cv::Mat global_mask(currIm_.rows, currIm_.cols, CV_8U, cv::Scalar(255));
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::erode(global_mask, global_mask, kernel);
     // === [1] KLT Tracking
-    auto stat= currFrame_->LandmarkStatuses();
-    int nMatches = klt_tracker_.Track(currIm_, currFrame_->getKeyPoints(), stat,
+    int nMatches = klt_tracker_.Track(currIm_, currFrame_->getKeyPoints(), currFrame_->LandmarkStatuses(),
                                       true, options_.klt_min_SSIM, global_mask);
 
     std::cout << "NMATCHES: " << nMatches << std::endl;
@@ -298,7 +299,6 @@ bool TrackingKLT::cameraTracking()
     Sophus::SE3f Tcwc = currFrame_->getPose();
     mapVisualizer_->updateCurrentPose(Tcwc);
     klt_tracker_.SetReferenceImage(currIm_, currFrame_->getKeyPoints(), global_mask);
-
     // assign frame
     // prevFrame_->assign(*currFrame_);
     return true;

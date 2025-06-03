@@ -57,7 +57,6 @@ int searchForTriangulation(KeyFrame* kf1, KeyFrame* kf2, int th, float fEpipolar
 /*
  * Searches matches between the current KeyFrame and the previous one to get more observations or fuse duplicated MapPoints
  */
-int fuse(std::shared_ptr<KeyFrame> pKF, int th, std::vector<std::shared_ptr<MapPoint>>& vMapPoints, Map* pMap);
 
 #endif //MINI_SLAM_DESCRIPTORMATCHING_H
 

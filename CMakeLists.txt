@@ -24,6 +24,5 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/OpenCV/build")
   set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/OpenCV/build")
 endif()
 
-add_subdirectory(Lab0)
 add_subdirectory(Modules)
 add_subdirectory(Apps)

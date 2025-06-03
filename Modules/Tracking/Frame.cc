@@ -30,7 +30,7 @@ Frame::Frame(const int nFeatures, const int nGridCols, const int nGridRows,
     vKeysDis_ = vector<cv::KeyPoint>(nFeatures);
     descriptors_ = cv::Mat(nFeatures, 32, CV_8U);
     vMapPoints_ = vector<shared_ptr<MapPoint>>(nFeatures, nullptr);
-    landmarkstatuses_ = vector<LandmarkStatus>(nFeatures, LandmarkStatus::TRACKED);
+    landmarkstatuses_ = vector<LandmarkStatus>(nFeatures, LandmarkStatus::BAD);
     calibration_ = calibration;
 
     // Compute image boundaries as distortion can change typical values

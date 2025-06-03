@@ -74,9 +74,6 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
 {
     currIm_ = im.clone();
 
-    // Update previous frame
-    // Update previous frame
-
     currFrame_->setIm(currIm_);
 
     nframesext++;
@@ -90,8 +87,6 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
 
         if (MonocularMapInitialization())
         {
-
-            // nFramesFromLastKF_ = 0;
 
             status_ = GOOD;
             Tcw = currFrame_->getPose();
@@ -111,7 +106,6 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
         {
 
             Tcw = currFrame_->getPose();
-            // updateMotionModel();
 
             mapVisualizer_->updateCurrentPose(Tcw);
             return true;
@@ -192,10 +186,11 @@ bool TrackingKLT::MonocularMapInitialization()
         return false;
     }
 
+    
     // find the points corresponding to the matches
-    for(int i=0;i<currFrame_->getKeyPoints().size();i++){
+    for(int i=0;i<vMatches_.size();i++){
         if(vMatches_[i]==-1) continue;
-        currFrame_->LandmarkStatuses()[vMatches_[i]]==LandmarkStatus::TRACKED; 
+        currFrame_->LandmarkStatuses()[i]=TRACKED; 
     }
 
     // Get map scale
@@ -229,12 +224,9 @@ bool TrackingKLT::MonocularMapInitialization()
         }
     }
     //    visualizer_->drawFrameMatches(currFrame_->getKeyPoints(), currIm_, vMatches_);
-    std::cout << "Number of points: " << currFrame_->getMapPoints().size() << endl;
-    cout << "Map initialized with " << nTriangulated << " MapPoints" << endl;
-    std::cout << "Number of matches" << nMatches << std::endl;
-    std::cout << "SIZEPTS" << currFrame_->getKeyPoints().size() << std::endl;
-    std::cout << "STATUSES" << currFrame_->LandmarkStatuses().size() << std::endl;
-
+    std::cout << "Map initialized with: " << currFrame_->getMapPoints().size() << endl;
+    std::cout << "Tracked Points:"<<currFrame_->GetKeypointsWithStatus({TRACKED_WITH_3D,TRACKED}).size()<<std::endl;
+    
     shared_ptr<KeyFrame> kf0(new KeyFrame(*prevFrame_));
     shared_ptr<KeyFrame> kf1(new KeyFrame(*currFrame_));
 

@@ -17,7 +17,7 @@ Camera.cols: 640
 Camera.rows: 480
 
 # Number of features per image
-FeatureExtractor.nFeatures: 1000
+FeatureExtractor.nFeatures: 2000
 
 # Number of levels in the scale pyramid
 FeatureExtractor.nScales: 8

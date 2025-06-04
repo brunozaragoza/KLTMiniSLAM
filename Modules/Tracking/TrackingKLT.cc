@@ -102,8 +102,9 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
         {
 
             Tcw = currFrame_->getPose();
-
+            if(nFramesFromLastKF_%3) promoteCurrentFrameToKeyFrame();
             mapVisualizer_->updateCurrentPose(Tcw);
+            nFramesFromLastKF_++;
             return true;
         }
         else
@@ -116,9 +117,28 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
 std::shared_ptr<KeyFrame> TrackingKLT::getLastKeyFrame()
 {
     shared_ptr<KeyFrame> toReturn = pLastKeyFrame_;
-    // pLastKeyFrame_ = nullptr;
+    pLastKeyFrame_ = nullptr;
 
     return toReturn;
+}
+void TrackingKLT::promoteCurrentFrameToKeyFrame() {
+    //Promote current frame to KeyFrame
+    pLastKeyFrame_ = shared_ptr<KeyFrame>(new KeyFrame(*currFrame_));
+
+    //Insert KeyFrame into the map
+    pMap_->insertKeyFrame(pLastKeyFrame_);
+
+    //Add all obsevations into the map
+    nLastKeyFrameId = pLastKeyFrame_->getId();
+    vector<shared_ptr<MapPoint>>& vMapPoints = pLastKeyFrame_->getMapPoints();
+    for(int i = 0; i < vMapPoints.size(); i++){
+        MapPoint* pMP = vMapPoints[i].get();
+        if(pMP)
+            pMap_->addObservation(nLastKeyFrameId,pMP->getId(),i);
+    }
+    pMap_->checkKeyFrame(pLastKeyFrame_->getId());
+    nFramesFromLastKF_=0;
+    bInserted = true;
 }
 
 void TrackingKLT::extractFeatures(const cv::Mat &im)

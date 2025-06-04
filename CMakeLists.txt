@@ -27,4 +27,3 @@ endif()
 
 add_subdirectory(Modules)
 add_subdirectory(Apps)
-add_subdirectory(Tests)

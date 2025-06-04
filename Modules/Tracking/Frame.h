@@ -203,9 +203,15 @@ public:
     /*
      * Gets the timestamp fo the frame
      */
+    void AddGeometryToKeypoint(const int idx, const int mappoint_id);
     double getTimestamp();
     void InsertObservation(const cv::KeyPoint& keypoint, const std::shared_ptr<MapPoint> pMP,
         const int mappoint_id, const LandmarkStatus status);
+
+        const std::unordered_map<int, int>& MapPointIdToIndex() const;
+
+        std::vector<int> GetMapPointsIdsWithStatus(
+            const std::vector<LandmarkStatus> statuses);
 private:
     // Initialization methods (to be only called at the constructor)
     void initializeGrid(const int nGridCols, const int nGridRows, const int nFeatures);
@@ -215,11 +221,12 @@ private:
     // Undistorted and distorted KeyPoints, its decsriptor and matched MapPoints, related by the same index
     std::vector<cv::KeyPoint> vKeys_, vKeysDis_;
     cv::Mat descriptors_;
+    std::unordered_map<int, int> index_to_mappoint_id_;
     std::vector<std::shared_ptr<MapPoint>> vMapPoints_;
     std::vector<LandmarkStatus> landmarkstatuses_;
     // Pose of the frame
     Sophus::SE3f Tcw_;
-
+    std::unordered_map<int,int> mappoint_id_to_index_;       
     //------------------------
     //     Calibration
     //------------------------

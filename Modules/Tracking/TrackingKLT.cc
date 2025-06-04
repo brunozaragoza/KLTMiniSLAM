@@ -217,6 +217,8 @@ bool TrackingKLT::MonocularMapInitialization()
             prevFrame_->setMapPoint(i, pMP);
             currFrame_->setMapPoint(vMatches_[i], pMP);
             pMap_->insertMapPoint(pMP);
+            currFrame_->AddGeometryToKeypoint(vMatches_[i],
+                pMP->getId());
             currFrame_->LandmarkStatuses()[vMatches_[i]] = TRACKED_WITH_3D;
             nTriangulated++;
         }
@@ -327,7 +329,7 @@ void TrackingKLT::PointReuse(const cv::Mat &im, const cv::Mat &mask,
             projected_landmark.y() >= 0 && projected_landmark.y() < im.rows)
         {
             cv::KeyPoint kp(cv::Point2f(projected_landmark.x(), projected_landmark.y()), 1.0f);
-            //TODO: Add function maybe with different name
+            
             frame_with_only_candidates.InsertObservation(kp, mappoint, mappoint_id, TRACKED_WITH_3D);
 
             keypoint_seeds.push_back(kp);
@@ -341,6 +343,54 @@ void TrackingKLT::PointReuse(const cv::Mat &im, const cv::Mat &mask,
         return;
     }
     std::cout << "CANDIDATES"<< candidates_in_image<<std::endl;
+
+    klt.Track(im, frame_with_only_candidates.getKeyPoints(), frame_with_only_candidates.LandmarkStatuses(),
+    true, 0.75, mask);
+
+// Insert tracked candidates into the current frame
+vector<cv::KeyPoint> tracked_candidate_keypoints =
+  frame_with_only_candidates.GetKeypointsWithStatus({TRACKED_WITH_3D});
+auto  tracked_candidate_landmarks =
+  frame_with_only_candidates.GetLandmarkPointersWithStatus({TRACKED_WITH_3D});
+vector<int> tracked_candidate_mappoint_ids =
+  frame_with_only_candidates.GetMapPointsIdsWithStatus({TRACKED_WITH_3D});
+
+int reused_landmarks = 0;
+
+for (int idx = 0; idx < tracked_candidate_keypoints.size(); idx++) {
+cv::KeyPoint keypoint = tracked_candidate_keypoints[idx];
+auto mappoint = tracked_candidate_landmarks[idx];
+int mappoint_id = tracked_candidate_mappoint_ids[idx];
+
+keypoint.class_id = pMap_->getMapPoint(mappoint_id)->getId();
+
+Eigen::Vector3f landmark_position_seed = mappoint->getWorldPosition();
+Eigen::Vector3f landmark_camera_position = currFrame_->getPose()* landmark_position_seed;
+Eigen::Vector2f projected_landmark;
+currFrame_->getCalibration()->project(landmark_camera_position, projected_landmark);
+
+float errx = projected_landmark.x() - keypoint.pt.x;
+float erry = projected_landmark.y() - keypoint.pt.y;
+
+float errtotal= errx * errx + erry *erry;
+if (errtotal > 5.99) {
+  continue;
+}
+if (currFrame_->MapPointIdToIndex().find(mappoint_id) != currFrame_->MapPointIdToIndex().end()) {
+  const int idx_in_frame = currFrame_->MapPointIdToIndex().at(mappoint_id);
+
+  currFrame_->getKeyPoints()[idx_in_frame] = keypoint;
+  currFrame_->getMapPoints()[idx_in_frame] = mappoint;
+  currFrame_->LandmarkStatuses()[idx_in_frame] = TRACKED_WITH_3D;
+
+} else {
+    currFrame_->InsertObservation(keypoint, mappoint, mappoint_id, TRACKED_WITH_3D);
+}
+
+reused_landmarks++;
+}
+
+std::cout<< "Reused landmarks: " << reused_landmarks;
 }
 bool TrackingKLT::cameraTracking()
 {
@@ -354,8 +404,8 @@ bool TrackingKLT::cameraTracking()
     cv::Mat previm = prevFrame_->getIm();
     std::vector<long unsigned int> lost_mappoint_ids;
     
-    PointReuse(currIm_, cv::Mat(), lost_mappoint_ids);
-    std::cout << "LOST MAP IDS" << lost_mappoint_ids.size() << std::endl;
+    //PointReuse(currIm_, global_mask, lost_mappoint_ids);
+    //std::cout << "LOST MAP IDS" << lost_mappoint_ids.size() << std::endl;
     int nMatches = klt_tracker_.Track(currIm_, currFrame_->getKeyPoints(), currFrame_->LandmarkStatuses(),
                                       true, options_.klt_min_SSIM, global_mask);
 

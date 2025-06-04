@@ -99,6 +99,7 @@
      void PointReuse(const cv::Mat &im, const cv::Mat &mask,
         std::vector<long unsigned int>  &lost_mappoint_ids);
      int nframesext=0;
+     std::unordered_map<int,int> index_in_frame;
  
      //Feature and descriptor extractors
      std::shared_ptr<Feature> featExtractor_2;

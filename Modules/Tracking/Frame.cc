@@ -128,12 +128,14 @@ std::vector<cv::KeyPoint> Frame::GetKeypointsWithStatus(
     return keypoints;
 }
 std::vector<std::shared_ptr<MapPoint>> Frame::GetLandmarkPointersWithStatus(
-    const std::vector<LandmarkStatus>& statuses)
+    const std::vector<LandmarkStatus> &statuses)
 {
     std::vector<std::shared_ptr<MapPoint>> landmark_ptrs;
-    for (int idx = 0; idx < landmarkstatuses_.size(); idx++) {
-        if (std::find(statuses.begin(), statuses.end(), landmarkstatuses_[idx]) != statuses.end()) {
-                landmark_ptrs.push_back(vMapPoints_[idx]);
+    for (int idx = 0; idx < landmarkstatuses_.size(); idx++)
+    {
+        if (std::find(statuses.begin(), statuses.end(), landmarkstatuses_[idx]) != statuses.end())
+        {
+            landmark_ptrs.push_back(vMapPoints_[idx]);
         }
     }
     return landmark_ptrs;
@@ -142,15 +144,42 @@ void Frame::setMapPoint(size_t idx, std::shared_ptr<MapPoint> pMP)
 {
     vMapPoints_[idx] = pMP;
 }
+std::vector<int> Frame::GetMapPointsIdsWithStatus(
+    const std::vector<LandmarkStatus> statuses)
+{
+    vector<int> mappoints_ids;
 
-void Frame::InsertObservation(const cv::KeyPoint& keypoint, const std::shared_ptr<MapPoint> pMP,
-    const int mappoint_id, const LandmarkStatus status) {
+    for (int idx = 0; idx < landmarkstatuses_.size(); idx++)
+    {
+        if (std::find(statuses.begin(), statuses.end(), landmarkstatuses_[idx]) != statuses.end())
+        {
+            mappoints_ids.push_back(index_to_mappoint_id_[idx]);
+        }
+    }
+
+    return mappoints_ids;
+}
+
+void Frame::AddGeometryToKeypoint(const int idx, const int mappoint_id) {
+
+    index_to_mappoint_id_[idx] = mappoint_id;
+    mappoint_id_to_index_[mappoint_id] = idx  ;     
+
+}
+
+const std::unordered_map<int, int>& Frame::MapPointIdToIndex() const {
+    return mappoint_id_to_index_;
+}
+void Frame::InsertObservation(const cv::KeyPoint &keypoint, const std::shared_ptr<MapPoint> pMP,
+                              const int mappoint_id, const LandmarkStatus status)
+{
+    if(status==TRACKED_WITH_3D)  index_to_mappoint_id_[vKeys_.size()] = mappoint_id;
+    
     vKeys_.push_back(keypoint);
     vMapPoints_.push_back(pMP);
     landmarkstatuses_.push_back(status);
 }
 
- 
 cv::Mat &Frame::getDescriptors()
 {
     return descriptors_;

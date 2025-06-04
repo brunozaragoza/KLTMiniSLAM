@@ -35,7 +35,7 @@ void bundleAdjustment(Map* pMap);
  * Performs an only pose optimization with the given Frame. It detects outliers and removes them
  * from the Frame. Returns the number of inliers (the number of MapPoints hold after the optimization)
  */
-int poseOnlyOptimization(Frame& currFrame);
+int poseOnlyOptimization(Frame& frame);
 
 /*
  * Performs a Bundle Adjustmen using the local map around the given KeyFrame

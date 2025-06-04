@@ -221,7 +221,7 @@ int poseOnlyOptimization(Frame& currFrame){
     }
 
     int nGood = 0;
-    for(int i = 0; i < vInlier.size(); i++){
+   for(int i = 0; i < vInlier.size(); i++){
         if(!vInlier[i]){
             currFrame.setMapPoint(i, nullptr);
         }

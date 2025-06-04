@@ -59,7 +59,7 @@ public:
      * Performs the tracking for an image. Returns true on success
      */
     bool doTracking(const cv::Mat& im, Sophus::SE3f& Tcw);
-
+   
     /*
      * Gets the last KeyFrame inserted into the map
      */

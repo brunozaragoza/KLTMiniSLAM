@@ -96,7 +96,8 @@
      //Updates the constan velocity model
      void updateMotionModel();
      void promoteCurrentFrameToKeyFrame();
-
+     void PointReuse(const cv::Mat &im, const cv::Mat &mask,
+        std::vector<long unsigned int>  &lost_mappoint_ids);
      int nframesext=0;
  
      //Feature and descriptor extractors

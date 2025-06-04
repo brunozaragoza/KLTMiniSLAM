@@ -204,7 +204,8 @@ public:
      * Gets the timestamp fo the frame
      */
     double getTimestamp();
-
+    void InsertObservation(const cv::KeyPoint& keypoint, const std::shared_ptr<MapPoint> pMP,
+        const int mappoint_id, const LandmarkStatus status);
 private:
     // Initialization methods (to be only called at the constructor)
     void initializeGrid(const int nGridCols, const int nGridRows, const int nFeatures);
@@ -241,7 +242,6 @@ private:
     int nScales_;
     std::vector<float> vScaleFactor_, vInvScaleFactor_; // Scale and inverse scale factor for each pyramid level
     std::vector<float> vSigma2_, vInvSigma2_;           // Uncertainties for a KeyPoint extracted at a image scale
-
     cv::Mat im_;
     double timestamp_;
 };

@@ -143,6 +143,14 @@ void Frame::setMapPoint(size_t idx, std::shared_ptr<MapPoint> pMP)
     vMapPoints_[idx] = pMP;
 }
 
+void Frame::InsertObservation(const cv::KeyPoint& keypoint, const std::shared_ptr<MapPoint> pMP,
+    const int mappoint_id, const LandmarkStatus status) {
+    vKeys_.push_back(keypoint);
+    vMapPoints_.push_back(pMP);
+    landmarkstatuses_.push_back(status);
+}
+
+ 
 cv::Mat &Frame::getDescriptors()
 {
     return descriptors_;

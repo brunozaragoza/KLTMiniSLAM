@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(OpenCV 4.2 REQUIRED)
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
-
+find_package(Boost REQUIRED COMPONENTS filesystem)
 find_library(MLPACK_LIBRARY
     NAMES mlpack
     PATHS /usr/lib /usr/lib/x86_64-linux-gnu
@@ -51,6 +51,7 @@ set(HEADER_FILES
         ${root}/Calibration/KannalaBrandt8.h
         ${root}/DatasetLoader/EurocVisualLoader.h
         ${root}/DatasetLoader/TUMRGBDLoader.h
+        ${root}/DatasetLoader/cv3d.h
         ${root}/DatasetLoader/TUMVILoader.h
         ${root}/DatasetLoader/VideoLoader.h
         ${root}/Features/Descriptor.h
@@ -84,6 +85,7 @@ set(SOURCE_FILES
         ${root}/Calibration/KannalaBrandt8.cc
         ${root}/DatasetLoader/EurocVisualLoader.cc
         ${root}/DatasetLoader/TUMRGBDLoader.cc
+        ${root}/DatasetLoader/cv3d.cc
         ${root}/DatasetLoader/TUMVILoader.cc
         ${root}/DatasetLoader/VideoLoader.cc
         ${root}/Features/FAST.cc
@@ -135,6 +137,7 @@ target_link_libraries(${LIBRARY_NAME}
         ${ARMADILLO_LIBRARY}
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
+        ${Boost_LIBRARIES}
         ${CMAKE_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_core.so
         ${CMAKE_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_stuff.so
         ${CMAKE_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_types_sba.so)

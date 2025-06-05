@@ -25,3 +25,7 @@ set(PROGRAM_NAME monoTUMIV)
 add_executable(${PROGRAM_NAME} monoTUMIV.cc)
 target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} mini_slam)
 
+set(PROGRAM_NAME monoCV3D)
+add_executable(${PROGRAM_NAME} cv3d_app.cc)
+target_link_libraries(${PROGRAM_NAME} ${OpenCV_LIBS} mini_slam)
+

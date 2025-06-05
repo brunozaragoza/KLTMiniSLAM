@@ -173,7 +173,10 @@ const std::unordered_map<int, int>& Frame::MapPointIdToIndex() const {
 void Frame::InsertObservation(const cv::KeyPoint &keypoint, const std::shared_ptr<MapPoint> pMP,
                               const int mappoint_id, const LandmarkStatus status)
 {
-    if(status==TRACKED_WITH_3D)  index_to_mappoint_id_[vKeys_.size()] = mappoint_id;
+    if(status==TRACKED_WITH_3D){
+    index_to_mappoint_id_[vKeys_.size()] = mappoint_id;
+    mappoint_id_to_index_[mappoint_id] = vKeys_.size();
+    }  
     
     vKeys_.push_back(keypoint);
     vMapPoints_.push_back(pMP);

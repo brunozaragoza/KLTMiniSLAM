@@ -41,7 +41,7 @@ void LocalMapping::doMapping(std::shared_ptr<KeyFrame> &pCurrKeyFrame) {
     currKeyFrame_ = pCurrKeyFrame;
 
     //Remove redundant MapPoints
-    mapPointCulling();
+    //mapPointCulling();
 
     //Triangulate new MapPoints
     triangulateNewMapPoints();

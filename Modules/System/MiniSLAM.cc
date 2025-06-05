@@ -52,8 +52,8 @@ bool MiniSLAM::processImage(const cv::Mat &im, Sophus::SE3f& Tcw) {
     bool goodTracked = tracker_.doTracking(grayIm, Tcw);
 
     //Do mapping
-    shared_ptr<KeyFrame> lastKeyFrame = tracker_.getLastKeyFrame();
-    mapper_.doMapping(lastKeyFrame);
+    //shared_ptr<KeyFrame> lastKeyFrame = tracker_.getLastKeyFrame();
+    //mapper_.doMapping(lastKeyFrame);
 
     //Update viewer windows
     visualizer_->updateWindows();

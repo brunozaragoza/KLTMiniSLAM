@@ -240,8 +240,6 @@ bool TrackingKLT::MonocularMapInitialization()
             prevFrame_->setMapPoint(i, pMP);
             currFrame_->setMapPoint(vMatches_[i], pMP);
             pMap_->insertMapPoint(pMP);
-            currFrame_->AddGeometryToKeypoint(vMatches_[i],
-                                              pMP->getId());
             currFrame_->LandmarkStatuses()[vMatches_[i]] = TRACKED_WITH_3D;
             nTriangulated++;
         }
@@ -296,6 +294,7 @@ void TrackingKLT::PointReuse(const cv::Mat &im, const cv::Mat &mask,
                              std::vector<long unsigned int> &lost_mappoint_ids)
 {
     auto all_mappoints = pMap_->getMapPoints();
+    std::cout << "MAP Points"<<pMap_->getMapPoints().size()<<std::endl;
     for (int i = 0; i < all_mappoints.size(); i++)
     {
         if (!currFrame_->getMapPoint(all_mappoints[i]->getId()))
@@ -366,7 +365,7 @@ void TrackingKLT::PointReuse(const cv::Mat &im, const cv::Mat &mask,
         return;
     }
     std::cout << "CANDIDATES" << candidates_in_image << std::endl;
-
+    //klt_tracker_.SetReferenceImage(im, frame_with_only_candidates.getKeyPoints(), mask);
     klt.Track(im, frame_with_only_candidates.getKeyPoints(), frame_with_only_candidates.LandmarkStatuses(),
               true, 0.75, mask);
 
@@ -429,14 +428,12 @@ bool TrackingKLT::cameraTracking()
     // === [1] KLT Tracking
     std::vector<cv::KeyPoint> pts = currFrame_->getKeyPoints();
     cv::Mat previm = prevFrame_->getIm();
-    std::vector<long unsigned int> lost_mappoint_ids;
-
-    // PointReuse(currIm_, global_mask, lost_mappoint_ids);
-    // std::cout << "LOST MAP IDS" << lost_mappoint_ids.size() << std::endl;
+    
     int nMatches = klt_tracker_.Track(currIm_, currFrame_->getKeyPoints(), currFrame_->LandmarkStatuses(),
                                       true, options_.klt_min_SSIM, global_mask);
 
     std::cout << "NMATCHES: " << nMatches << std::endl;
+    std::vector<long unsigned int> lost_mappoint_ids;
 
     std::vector<int> matches;
     matches.reserve(currFrame_->LandmarkStatuses().size());
@@ -460,21 +457,6 @@ bool TrackingKLT::cameraTracking()
     prevFrame_->setIm(currIm_);
     // pose optimization
     int n_inliers = poseOnlyOptimization(*currFrame_);
-    if (nMatches > 40)
-    {
-        float  avg=0;
-        float nb=0;
-        for (int i = 0; i < currFrame_->getMapPoints().size(); i++)
-        {
-            auto mappoint = currFrame_->getMapPoints()[i];
-            if (pMap_->getNumberOfObservations(i) > 0){
-                    avg+= pMap_->getNumberOfObservations(i);
-                    nb++;
-            }
-        }
-        avg= avg/nb;
-        std::cout << "Number of frames sequence:"<< avg << std::endl; 
-    }
 
     if (n_inliers < 10)
     {

@@ -38,7 +38,6 @@
  #include "Matching/landmarkstatus.h"
  #include <Visualization/FrameVisualizer.h>
  #include <Visualization/MapVisualizer.h>
- #include "Tracking/monocularmapinit.h"
  #include <sophus/se3.hpp>
  
  #include <opencv2/opencv.hpp>
@@ -128,7 +127,6 @@
  
      //Monocular map initializer
      std::shared_ptr<MonocularMapInitializer> monoInitializer_;
-     std::shared_ptr<MonocularMapInitializerKLT> monoInitializerKlt_;
      //SLAM map
      std::shared_ptr<Map> pMap_;
  

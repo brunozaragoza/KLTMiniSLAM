@@ -55,9 +55,11 @@
      //Process the sequence
      cv::Mat currIm;
      double currTs;
+     std::cout << "SIZE"<< sequence.getLenght()<<std::endl;
      for(int i = 0; i < sequence.getLenght(); i++){
         currIm= sequence.GetImage(i);
          Sophus::SE3f Tcw;
+         cv::imshow("A",currIm);
          if(SLAM.processImage(currIm, Tcw)){
              Sophus::SE3f Twc = Tcw.inverse();
              //Save predicted pose to the file

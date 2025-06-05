@@ -237,6 +237,8 @@ int poseOnlyOptimization(Frame& currFrame){
     return nGood;
 }
 
+
+
 void localBundleAdjustment(Map* pMap, ID currKeyFrameId){
     unordered_map<KeyFrame_,size_t> mKeyFrameId, mFixedKeyFrameId;
     unordered_map<MapPoint_,size_t> mMapPointId;

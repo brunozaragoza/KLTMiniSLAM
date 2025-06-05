@@ -69,6 +69,12 @@ public:
     int getMinCommonObs();
 
     float getMinCos();
+    float getMaxReprojError();
+
+    int getMaxFramesBetweenKeyFrames();
+    int getMaxFeatNewKeyFrame();
+    int getMinFeatNewKeyFrame();
+    float getThRefRatio();
 
 private:
     //Camera parameters
@@ -95,6 +101,12 @@ private:
     int nMinCommonObs_;
 
     float fMinCos_;
+    float fMaxReprojectionError_;
+
+    int nMaxFramesBetweenKeyFrames_;
+    int nMaxFeatNewKeyFrame_;
+    int nMinFeatNewKeyFrame_;
+    float fThRefRatio_;
 };
 
 

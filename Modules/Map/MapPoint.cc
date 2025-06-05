@@ -23,7 +23,8 @@ long unsigned int MapPoint::nNextId_=0;
 
 MapPoint::MapPoint(Eigen::Vector3f &p3d) {
     position3D_ = p3d;
-
+    nFramesShouldSee = 2;
+    nFramesHaveSeen = 2;
     nId_ = nNextId_++;
 }
 
@@ -70,3 +71,11 @@ float MapPoint::getMinDistanceInvariance(){
 float MapPoint::getMaxDistanceInvariance(){
     return 1.2 * fMaxDistance_;
 }
+
+int MapPoint::getNumFramesShouldSee() { return nFramesShouldSee; }
+
+int MapPoint::getNumFramesHaveSeen() { return nFramesHaveSeen; }
+
+void MapPoint::increaseFramesShouldSee() { nFramesShouldSee++; }
+
+void MapPoint::increaseFramesHaveSeen() { nFramesHaveSeen++; }

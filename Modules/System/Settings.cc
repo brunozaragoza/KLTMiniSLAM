@@ -16,7 +16,7 @@
 */
 
 #include "Calibration/PinHole.h"
-#include "Calibration/KannalaBrandt.h"
+#include "Calibration/KannalaBrandt8.h"
 
 #include "Settings.h"
 
@@ -39,28 +39,42 @@ Settings::Settings(const std::string& configFile) {
     float fy = fSettings["Camera.fy"];
     float cx = fSettings["Camera.cx"];
     float cy = fSettings["Camera.cy"];
-    vector<float> vCalibration = {fx,fy,cx,cy};
 
-    calibration_ = shared_ptr<CameraModel>(new PinHole(vCalibration));
+    std::string sModel = fSettings["Camera.type"];
+    if (sModel == "PinHole") {
+        vector<float> vCalibration = {fx,fy,cx,cy};
+        calibration_ = shared_ptr<CameraModel>(new PinHole(vCalibration));
 
-    //Read (if exists) distortion parameters
-    if(!fSettings["Camera.k0"].empty() && !fSettings["Camera.k1"].empty() && !fSettings["Camera.k2"].empty() && !fSettings["Camera.k3"].empty()){
-        vDistortion_.resize(4);
-        vDistortion_[0] = fSettings["Camera.k1"];
-        vDistortion_[1] = fSettings["Camera.k2"];
-        vDistortion_[2] = fSettings["Camera.k3"];
-        vDistortion_[3] = fSettings["Camera.k4"];
-        vCalibration = {fx,fy,cx,cy,vDistortion_[0],vDistortion_[1],vDistortion_[2],vDistortion_[3]};
-        calibration_ = shared_ptr<CameraModel>(new KannalaBrandt(vCalibration));
-        std::cout<<"KannalaBrandt"<<std::endl;
-    }
-    if(!fSettings["Camera.k1"].empty() && !fSettings["Camera.k2"].empty() && !fSettings["Camera.p1"].empty() && !fSettings["Camera.p2"].empty()){
-            vDistortion_.resize(4);
+        //Read (if exists) distortion parameters
+        if(!fSettings["Camera.k1"].empty()){
+            if(!fSettings["Camera.k3"].empty()){
+                vDistortion_.resize(5);
+                vDistortion_[4] = fSettings["Camera.k3"];
+            }
+            else{
+                vDistortion_.resize(4);
+            }
+
             vDistortion_[0] = fSettings["Camera.k1"];
             vDistortion_[1] = fSettings["Camera.k2"];
             vDistortion_[2] = fSettings["Camera.p1"];
             vDistortion_[3] = fSettings["Camera.p2"];
-  }
+        }
+    }
+    else if (sModel == "KannalaBrandt8") {
+        float k0 = fSettings["Camera.k0"];
+        float k1 = fSettings["Camera.k1"];
+        float k2 = fSettings["Camera.k2"];
+        float k3 = fSettings["Camera.k3"];
+        vector<float> vCalibration = {fx,fy,cx,cy,k0,k1,k2,k3};
+        calibration_ = shared_ptr<CameraModel>(new KannalaBrandt8(vCalibration));
+    }
+    else {
+        cerr << "[ERROR]: Unknown camera model: " << sModel << endl;
+        cerr << "Aborting..." << endl;
+
+        exit(-1);
+    }
 
     //Read image dimensions
     imCols_ = fSettings["Camera.cols"];
@@ -87,6 +101,12 @@ Settings::Settings(const std::string& configFile) {
 
     nMinCommonObs_ = fSettings["Map.minObs"];
     fMinCos_ = fSettings["Triangulation.minCos"];
+    fMaxReprojectionError_ = fSettings["Triangulation.maxReprojectionError"];
+
+    nMaxFramesBetweenKeyFrames_ = fSettings["Tracking.maxFrames"];
+    nMaxFeatNewKeyFrame_ = fSettings["Tracking.maxFeatures"];
+    nMinFeatNewKeyFrame_ = fSettings["Tracking.minFeatures"];
+    fThRefRatio_ = fSettings["Tracking.refRatio"];
 }
 
 ostream &operator<<(std::ostream& output, const Settings& settings){
@@ -187,4 +207,24 @@ int Settings::getMinCommonObs(){
 
 float Settings::getMinCos(){
     return fMinCos_;
+}
+
+float Settings::getMaxReprojError(){
+    return fMaxReprojectionError_;
+}
+
+int Settings::getMaxFramesBetweenKeyFrames(){
+    return nMaxFramesBetweenKeyFrames_;
+}
+
+int Settings::getMaxFeatNewKeyFrame(){
+    return nMaxFeatNewKeyFrame_;
+}
+
+int Settings::getMinFeatNewKeyFrame(){
+    return nMinFeatNewKeyFrame_;
+}
+
+float Settings::getThRefRatio() {
+    return fThRefRatio_;
 }

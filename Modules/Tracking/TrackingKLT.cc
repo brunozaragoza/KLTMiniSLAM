@@ -102,7 +102,8 @@ bool TrackingKLT::doTracking(const cv::Mat &im, Sophus::SE3f &Tcw)
         {
 
             Tcw = currFrame_->getPose();
-            if(nFramesFromLastKF_%3) promoteCurrentFrameToKeyFrame();
+            if (nFramesFromLastKF_ % 3)
+                promoteCurrentFrameToKeyFrame();
             mapVisualizer_->updateCurrentPose(Tcw);
             nFramesFromLastKF_++;
             return true;
@@ -121,23 +122,25 @@ std::shared_ptr<KeyFrame> TrackingKLT::getLastKeyFrame()
 
     return toReturn;
 }
-void TrackingKLT::promoteCurrentFrameToKeyFrame() {
-    //Promote current frame to KeyFrame
+void TrackingKLT::promoteCurrentFrameToKeyFrame()
+{
+    // Promote current frame to KeyFrame
     pLastKeyFrame_ = shared_ptr<KeyFrame>(new KeyFrame(*currFrame_));
 
-    //Insert KeyFrame into the map
+    // Insert KeyFrame into the map
     pMap_->insertKeyFrame(pLastKeyFrame_);
 
-    //Add all obsevations into the map
+    // Add all obsevations into the map
     nLastKeyFrameId = pLastKeyFrame_->getId();
-    vector<shared_ptr<MapPoint>>& vMapPoints = pLastKeyFrame_->getMapPoints();
-    for(int i = 0; i < vMapPoints.size(); i++){
-        MapPoint* pMP = vMapPoints[i].get();
-        if(pMP)
-            pMap_->addObservation(nLastKeyFrameId,pMP->getId(),i);
+    vector<shared_ptr<MapPoint>> &vMapPoints = pLastKeyFrame_->getMapPoints();
+    for (int i = 0; i < vMapPoints.size(); i++)
+    {
+        MapPoint *pMP = vMapPoints[i].get();
+        if (pMP)
+            pMap_->addObservation(nLastKeyFrameId, pMP->getId(), i);
     }
     pMap_->checkKeyFrame(pLastKeyFrame_->getId());
-    nFramesFromLastKF_=0;
+    nFramesFromLastKF_ = 0;
     bInserted = true;
 }
 
@@ -238,7 +241,7 @@ bool TrackingKLT::MonocularMapInitialization()
             currFrame_->setMapPoint(vMatches_[i], pMP);
             pMap_->insertMapPoint(pMP);
             currFrame_->AddGeometryToKeypoint(vMatches_[i],
-                pMP->getId());
+                                              pMP->getId());
             currFrame_->LandmarkStatuses()[vMatches_[i]] = TRACKED_WITH_3D;
             nTriangulated++;
         }
@@ -336,7 +339,7 @@ void TrackingKLT::PointReuse(const cv::Mat &im, const cv::Mat &mask,
     {
         auto mappoint = pMap_->getMapPoint(mappoint_id);
         Eigen::Vector3f landmark_position_seed = mappoint->getWorldPosition();
-        Eigen::Vector3f landmark_camera_position = currFrame_->getPose()* landmark_position_seed;
+        Eigen::Vector3f landmark_camera_position = currFrame_->getPose() * landmark_position_seed;
         Eigen::Vector2f projected_landmark;
         currFrame_->getCalibration()->project(landmark_camera_position, projected_landmark);
 
@@ -349,7 +352,7 @@ void TrackingKLT::PointReuse(const cv::Mat &im, const cv::Mat &mask,
             projected_landmark.y() >= 0 && projected_landmark.y() < im.rows)
         {
             cv::KeyPoint kp(cv::Point2f(projected_landmark.x(), projected_landmark.y()), 1.0f);
-            
+
             frame_with_only_candidates.InsertObservation(kp, mappoint, mappoint_id, TRACKED_WITH_3D);
 
             keypoint_seeds.push_back(kp);
@@ -362,55 +365,59 @@ void TrackingKLT::PointReuse(const cv::Mat &im, const cv::Mat &mask,
     {
         return;
     }
-    std::cout << "CANDIDATES"<< candidates_in_image<<std::endl;
+    std::cout << "CANDIDATES" << candidates_in_image << std::endl;
 
     klt.Track(im, frame_with_only_candidates.getKeyPoints(), frame_with_only_candidates.LandmarkStatuses(),
-    true, 0.75, mask);
+              true, 0.75, mask);
 
-// Insert tracked candidates into the current frame
-vector<cv::KeyPoint> tracked_candidate_keypoints =
-  frame_with_only_candidates.GetKeypointsWithStatus({TRACKED_WITH_3D});
-auto  tracked_candidate_landmarks =
-  frame_with_only_candidates.GetLandmarkPointersWithStatus({TRACKED_WITH_3D});
-vector<int> tracked_candidate_mappoint_ids =
-  frame_with_only_candidates.GetMapPointsIdsWithStatus({TRACKED_WITH_3D});
+    // Insert tracked candidates into the current frame
+    vector<cv::KeyPoint> tracked_candidate_keypoints =
+        frame_with_only_candidates.GetKeypointsWithStatus({TRACKED_WITH_3D});
+    auto tracked_candidate_landmarks =
+        frame_with_only_candidates.GetLandmarkPointersWithStatus({TRACKED_WITH_3D});
+    vector<int> tracked_candidate_mappoint_ids =
+        frame_with_only_candidates.GetMapPointsIdsWithStatus({TRACKED_WITH_3D});
 
-int reused_landmarks = 0;
+    int reused_landmarks = 0;
 
-for (int idx = 0; idx < tracked_candidate_keypoints.size(); idx++) {
-cv::KeyPoint keypoint = tracked_candidate_keypoints[idx];
-auto mappoint = tracked_candidate_landmarks[idx];
-int mappoint_id = tracked_candidate_mappoint_ids[idx];
+    for (int idx = 0; idx < tracked_candidate_keypoints.size(); idx++)
+    {
+        cv::KeyPoint keypoint = tracked_candidate_keypoints[idx];
+        auto mappoint = tracked_candidate_landmarks[idx];
+        int mappoint_id = tracked_candidate_mappoint_ids[idx];
 
-keypoint.class_id = pMap_->getMapPoint(mappoint_id)->getId();
+        keypoint.class_id = pMap_->getMapPoint(mappoint_id)->getId();
 
-Eigen::Vector3f landmark_position_seed = mappoint->getWorldPosition();
-Eigen::Vector3f landmark_camera_position = currFrame_->getPose()* landmark_position_seed;
-Eigen::Vector2f projected_landmark;
-currFrame_->getCalibration()->project(landmark_camera_position, projected_landmark);
+        Eigen::Vector3f landmark_position_seed = mappoint->getWorldPosition();
+        Eigen::Vector3f landmark_camera_position = currFrame_->getPose() * landmark_position_seed;
+        Eigen::Vector2f projected_landmark;
+        currFrame_->getCalibration()->project(landmark_camera_position, projected_landmark);
 
-float errx = projected_landmark.x() - keypoint.pt.x;
-float erry = projected_landmark.y() - keypoint.pt.y;
+        float errx = projected_landmark.x() - keypoint.pt.x;
+        float erry = projected_landmark.y() - keypoint.pt.y;
 
-float errtotal= errx * errx + erry *erry;
-if (errtotal > 5.99) {
-  continue;
-}
-if (currFrame_->MapPointIdToIndex().find(mappoint_id) != currFrame_->MapPointIdToIndex().end()) {
-  const int idx_in_frame = currFrame_->MapPointIdToIndex().at(mappoint_id);
+        float errtotal = errx * errx + erry * erry;
+        if (errtotal > 5.99)
+        {
+            continue;
+        }
+        if (currFrame_->MapPointIdToIndex().find(mappoint_id) != currFrame_->MapPointIdToIndex().end())
+        {
+            const int idx_in_frame = currFrame_->MapPointIdToIndex().at(mappoint_id);
 
-  currFrame_->getKeyPoints()[idx_in_frame] = keypoint;
-  currFrame_->getMapPoints()[idx_in_frame] = mappoint;
-  currFrame_->LandmarkStatuses()[idx_in_frame] = TRACKED_WITH_3D;
+            currFrame_->getKeyPoints()[idx_in_frame] = keypoint;
+            currFrame_->getMapPoints()[idx_in_frame] = mappoint;
+            currFrame_->LandmarkStatuses()[idx_in_frame] = TRACKED_WITH_3D;
+        }
+        else
+        {
+            currFrame_->InsertObservation(keypoint, mappoint, mappoint_id, TRACKED_WITH_3D);
+        }
 
-} else {
-    currFrame_->InsertObservation(keypoint, mappoint, mappoint_id, TRACKED_WITH_3D);
-}
+        reused_landmarks++;
+    }
 
-reused_landmarks++;
-}
-
-std::cout<< "Reused landmarks: " << reused_landmarks;
+    std::cout << "Reused landmarks: " << reused_landmarks;
 }
 bool TrackingKLT::cameraTracking()
 {
@@ -423,14 +430,14 @@ bool TrackingKLT::cameraTracking()
     std::vector<cv::KeyPoint> pts = currFrame_->getKeyPoints();
     cv::Mat previm = prevFrame_->getIm();
     std::vector<long unsigned int> lost_mappoint_ids;
-    
-    //PointReuse(currIm_, global_mask, lost_mappoint_ids);
-    //std::cout << "LOST MAP IDS" << lost_mappoint_ids.size() << std::endl;
+
+    // PointReuse(currIm_, global_mask, lost_mappoint_ids);
+    // std::cout << "LOST MAP IDS" << lost_mappoint_ids.size() << std::endl;
     int nMatches = klt_tracker_.Track(currIm_, currFrame_->getKeyPoints(), currFrame_->LandmarkStatuses(),
                                       true, options_.klt_min_SSIM, global_mask);
 
     std::cout << "NMATCHES: " << nMatches << std::endl;
-   
+
     std::vector<int> matches;
     matches.reserve(currFrame_->LandmarkStatuses().size());
     for (int i = 0; i < currFrame_->LandmarkStatuses().size(); i++)
@@ -449,13 +456,29 @@ bool TrackingKLT::cameraTracking()
         matches.push_back(-1);
     }
     visualizer_->drawMatches(pts, previm, currFrame_->getKeyPoints(), currIm_, matches);
-    // Copy data from OpenCV to Eigen
-    // pose optimization
     klt_tracker_.SetReferenceImage(currIm_, currFrame_->getKeyPoints(), global_mask);
     prevFrame_->setIm(currIm_);
+    // pose optimization
     int n_inliers = poseOnlyOptimization(*currFrame_);
+    if (nMatches > 40)
+    {
+        float  avg=0;
+        float nb=0;
+        for (int i = 0; i < currFrame_->getMapPoints().size(); i++)
+        {
+            auto mappoint = currFrame_->getMapPoints()[i];
+            if (pMap_->getNumberOfObservations(i) > 0){
+                    avg+= pMap_->getNumberOfObservations(i);
+                    nb++;
+            }
+        }
+        avg= avg/nb;
+        std::cout << "Number of frames sequence:"<< avg << std::endl; 
+    }
+
     if (n_inliers < 10)
     {
+
         std::cout << "Not enough iniliers" << std::endl;
         return false;
     }

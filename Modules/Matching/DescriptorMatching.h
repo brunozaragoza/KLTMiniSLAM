@@ -27,7 +27,7 @@
 #include "Map/KeyFrame.h"
 #include "Map/Map.h"
 #include "Tracking/Frame.h"
-
+#include "System/Settings.h"
 // Bit set count operation from
 // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 int HammingDistance(const cv::Mat &a, const cv::Mat &b);
@@ -57,6 +57,11 @@ int searchForTriangulation(KeyFrame* kf1, KeyFrame* kf2, int th, float fEpipolar
 /*
  * Searches matches between the current KeyFrame and the previous one to get more observations or fuse duplicated MapPoints
  */
+/*
+ * Searches matches between the current KeyFrame and the previous one to get more observations or fuse duplicated MapPoints
+ */
+int fuse(std::shared_ptr<KeyFrame> pKF, int th, std::vector<std::shared_ptr<MapPoint>>& vMapPoints, Map* pMap, Settings settings);
+
 
 #endif //MINI_SLAM_DESCRIPTORMATCHING_H
 

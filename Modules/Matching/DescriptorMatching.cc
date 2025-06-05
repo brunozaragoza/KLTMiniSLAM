@@ -338,3 +338,126 @@ int searchForTriangulation(KeyFrame* kf1, KeyFrame* kf2, int th, float fEpipolar
 
     return nMatches;
 }
+
+
+int fuse(std::shared_ptr<KeyFrame> pKF, int th, std::vector<std::shared_ptr<MapPoint>>& vMapPoints, Map* pMap, Settings settings){
+    Sophus::SE3f Tcw = pKF->getPose();
+    shared_ptr<CameraModel> calibration = pKF->getCalibration();
+
+    vector<size_t> vIndicesToCheck(100);
+
+    vector<shared_ptr<MapPoint>>& vKFMps = pKF->getMapPoints();
+
+    cv::Mat descMat = pKF->getDescriptors();
+    int nFused = 0;
+
+    for(size_t i = 0; i < vMapPoints.size(); i++){
+        //Clear previous matches
+        vIndicesToCheck.clear();
+
+        shared_ptr<MapPoint> pMP = vMapPoints[i];
+
+        if(!pMP)
+            continue;
+
+        if(pMap->getNumberOfObservations(pMP->getId()) == 0)
+            continue;
+
+        if(pMap->isMapPointInKeyFrame(pMP->getId(),pKF->getId()) != -1){
+            continue;
+        }
+
+        /*
+         * Your code for Lab 4 - Task 3 here!
+         */
+         // Project MapPoint into the KeyFrame
+        Eigen::Vector3f p3Dc = Tcw * pMP->getWorldPosition();
+        if (p3Dc.z() < 0.0f) continue;
+
+        cv::Point2f uv = calibration->project(p3Dc);
+
+        // Check distance is in the scale invariance region of the MapPoint
+        Eigen::Vector3f rayWorld =
+            pMP->getWorldPosition() - pKF->getPose().inverse().translation();
+        float dist = rayWorld.norm();
+        float maxDistance = pMP->getMaxDistanceInvariance();
+        float minDistance = pMP->getMinDistanceInvariance();
+
+        if (dist < minDistance || dist > maxDistance) continue;
+
+        float viewCos = rayWorld.normalized().dot(pMP->getNormalOrientation());
+        if (viewCos < 0.5) continue;
+
+        // Predict scale
+        int predictedOctave =
+            ceil(log(maxDistance / dist) / log(pKF->getScaleFactor(1)));
+        if (predictedOctave < 0)
+            predictedOctave = 0;
+        else if (predictedOctave > pKF->getNumberOfScales())
+            predictedOctave = pKF->getNumberOfScales();
+
+        // Search in a radius
+        float radius = 3.0f * pKF->getScaleFactor(predictedOctave);
+
+        pKF->getFeaturesInArea(uv.x, uv.y, radius, predictedOctave - 1,
+                            predictedOctave + 1, vIndicesToCheck);
+
+        /*
+        * Modification for Lab 4 - Task 4
+        */
+        if (uv.x > 0.0f && uv.x < settings.getImCols() && uv.y > 0.0f &&
+            uv.y < settings.getImRows()) {
+            pMP->increaseFramesShouldSee();
+        }
+        /** End modification **/
+
+        if (vIndicesToCheck.size() == 0) continue;
+
+        // Get MapPoint descriptor
+        cv::Mat &desc = pMP->getDescriptor();
+
+        // Match with the one with the smallest Hamming distance
+        int bestDist = 255;
+        size_t bestIdx;
+        for (auto j : vIndicesToCheck) {
+            // Check reprojection error
+            cv::KeyPoint key = pKF->getKeyPoint(j);
+            if (squaredReprojectionError(key.pt, uv) > 5.99) continue;
+
+            cv::Mat currDesc = descMat.row(j);
+            int dist = HammingDistance(desc, currDesc);
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestIdx = j;
+            }
+        }
+
+        if (bestDist <= th) {
+            /** Modification for Lab 4 - Task 4 **/
+            pMP->increaseFramesHaveSeen();
+            /** End modification **/
+
+            // pMP is best matched with bestidx. If it had another KP match,
+            // remove it before doing anything else
+            int idx = pMap->isMapPointInKeyFrame(pMP->getId(), pKF->getId());
+            // note that idx should be != bestIdx to prevent removing good
+            // connections
+            if (idx != -1 && idx != bestIdx) {
+                pKF->setMapPoint(idx, nullptr);
+                pMap->removeObservation(pKF->getId(), pMP->getId());
+            }
+            if (vKFMps[bestIdx]) {
+                if (vKFMps[bestIdx]->getId() == pMP->getId()) continue;
+
+                pMap->fuseMapPoints(pMP->getId(), vKFMps[bestIdx]->getId());
+                nFused++;
+            } else {
+                pKF->setMapPoint(bestIdx, pMP);
+                pMap->addObservation(pKF->getId(), pMP->getId(), bestIdx);
+            }
+        }
+    }
+
+    return nFused;
+}

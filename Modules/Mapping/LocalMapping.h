@@ -22,53 +22,55 @@
  * it triangulates new MapPoints, removes duplicated ones and runs a Local Bundl
  */
 
-#ifndef MINI_SLAM_LOCALMAPPING_H
-#define MINI_SLAM_LOCALMAPPING_H
-
-#include "Map/KeyFrame.h"
-#include "Map/Map.h"
-#include "System/Settings.h"
-
-#include "Visualization/FrameVisualizer.h"
-
-#include <memory>
-
-class LocalMapping {
-public:
-    LocalMapping();
-
-    /*
-     * Constructor with the SLAM map and settings
-     */
-    LocalMapping(Settings& settings, std::shared_ptr<Map> pMap);
-
-    /*
-     * Does the mapping operative: triangulation, duplication remove and Local Bundle Adjustment
-     */
-    void doMapping(std::shared_ptr<KeyFrame>& pCurrKeyFrame);
-
-private:
-    /*
-     * Removes from the map redundant or wrongly triangulated points
-     */
-    void mapPointCulling();
-
-    /*
-     * Triangulates new MapPoints with the current KeyFrame
-     */
-    void triangulateNewMapPoints();
-
-    /*
-     * Matches MapPoints from the current KeyFrame with the previous ones and checks for duplicates
-     */
-    void checkDuplicatedMapPoints();
-
-    std::shared_ptr<Map> pMap_;
-
-    std::shared_ptr<KeyFrame> currKeyFrame_;
-
-    Settings settings_;
-};
-
-
-#endif //MINI_SLAM_LOCALMAPPING_H
+ #ifndef MINI_SLAM_LOCALMAPPING_H
+ #define MINI_SLAM_LOCALMAPPING_H
+ 
+ #include "Map/KeyFrame.h"
+ #include "Map/Map.h"
+ #include "System/Settings.h"
+ 
+ #include "Visualization/FrameVisualizer.h"
+ 
+ #include <memory>
+ 
+ class LocalMapping {
+ public:
+     LocalMapping();
+ 
+     /*
+      * Constructor with the SLAM map and settings
+      */
+     LocalMapping(Settings& settings, std::shared_ptr<Map> pMap);
+ 
+     /*
+      * Does the mapping operative: triangulation, duplication remove and Local Bundle Adjustment
+      */
+     void doMapping(std::shared_ptr<KeyFrame>& pCurrKeyFrame);
+ 
+ private:
+     /*
+      * Removes from the map redundant or wrongly triangulated points
+      */
+     void mapPointCulling();
+ 
+     /*
+      * Triangulates new MapPoints with the current KeyFrame
+      */
+     void triangulateNewMapPoints();
+ 
+     /*
+      * Matches MapPoints from the current KeyFrame with the previous ones and checks for duplicates
+      */
+     void checkDuplicatedMapPoints();
+ 
+     std::shared_ptr<Map> pMap_;
+ 
+     std::shared_ptr<KeyFrame> currKeyFrame_;
+     std::shared_ptr<KeyFrame> prevKeyFrame_;
+ 
+     Settings settings_;
+ };
+ 
+ 
+ #endif //MINI_SLAM_LOCALMAPPING_H
+ 

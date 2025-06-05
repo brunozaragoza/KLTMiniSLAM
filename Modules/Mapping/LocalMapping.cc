@@ -33,10 +33,12 @@ LocalMapping::LocalMapping(Settings& settings, std::shared_ptr<Map> pMap) {
 
 void LocalMapping::doMapping(std::shared_ptr<KeyFrame> &pCurrKeyFrame) {
     //Keep input keyframe
-    currKeyFrame_ = pCurrKeyFrame;
+    if (!pCurrKeyFrame) return;
 
-    if(!currKeyFrame_)
-        return;
+    if (currKeyFrame_ && pCurrKeyFrame->getId() != currKeyFrame_->getId()) {
+        prevKeyFrame_ = currKeyFrame_;
+    }
+    currKeyFrame_ = pCurrKeyFrame;
 
     //Remove redundant MapPoints
     mapPointCulling();
@@ -51,38 +53,35 @@ void LocalMapping::doMapping(std::shared_ptr<KeyFrame> &pCurrKeyFrame) {
 }
 
 void LocalMapping::mapPointCulling() {
-    vector<shared_ptr<MapPoint>> vMapPoints = currKeyFrame_->getMapPoints();
-    std::vector<std::pair<ID,int>> covisiblekeyfs=   pMap_->getCovisibleKeyFrames(currKeyFrame_->getId());
-    for(shared_ptr<MapPoint> pMP : vMapPoints){
-        if(!pMP)
-            continue;
+    /*
+     * Your code for Lab 4 - Task 4 here!
+     */
+    std::vector<ID> removeIdx;
+    for (auto entry : pMap_->getMapPoints()) {
+        ID idx = std::get<0>(entry);
+        std::shared_ptr<MapPoint> pMP = std::get<1>(entry);
+        int nKFObs = pMap_->getNumberOfObservations(idx);  // seen in keyframes
+        int nFObs = pMP->getNumFramesHaveSeen();           // seen in frames
 
-        int numObservations = pMap_->getNumberOfObservations(pMP->getId());
+        // Condition 1: A pct of the frames that should see the point do see it
+        float shouldSeePct = 0.2f;
+        int nFShouldSee = pMP->getNumFramesShouldSee();
+        bool c1 = nFShouldSee >= 8 && nFObs <= int(nFShouldSee * shouldSeePct);
 
-        int nkfs = 0; // Initialize to an invalid keyframe ID
- 
-         for (auto kf : covisiblekeyfs) {
-             int idx = pMap_->isMapPointInKeyFrame(pMP->getId(), kf.first);
-             if (idx != -1) {
-                 nkfs++;;  // Keep track of the latest keyframe ID
-             }
-         }
-         
-        //less than 3 observations and avoid deleting the beggining of the map
-         // Check if it is more than 25% of covisible keyframes 
-         float ratio= (float)nkfs/(float)covisiblekeyfs.size();
-         if ((ratio - 0.05<0.0001 & covisiblekeyfs.size()>5)) {
-            // std::cout << "MapPoint ID: " << pMP->getId() << " has not been seen in the last frames." << std::endl;
-            pMap_->removeMapPoint(pMP->getId());
-            continue;
-         }
-        if((numObservations <3  && currKeyFrame_->getId()>5) ){
-            std::cout << "MapPoint ID: " << pMP->getId() << " has not been 3 observations." << std::endl;
-            
-            pMap_->removeMapPoint(pMP->getId());
+        // Condition 2: It has not been seen in the 2 following KeyFrames
+        // after its triangulation (equivalent to nobs == 2 and not seen in
+        // current or previous)
+        bool c2 =
+            nKFObs <= 2 && currKeyFrame_ && prevKeyFrame_ &&
+            pMap_->isMapPointInKeyFrame(idx, currKeyFrame_->getId()) == -1 &&
+            pMap_->isMapPointInKeyFrame(idx, prevKeyFrame_->getId()) == -1;
+
+        if (c1 || c2) {
+            removeIdx.push_back(idx);
         }
-
-        
+    }
+    for (ID idx : removeIdx) {
+        pMap_->removeMapPoint(idx);
     }
 }
 
@@ -107,12 +106,16 @@ void LocalMapping::triangulateNewMapPoints() {
         if(pKF->getId() == currKeyFrame_->getId())
             continue;
 
+        /*** Lab 4 - Task 2: read calibration of 2nd KF                   ***/
+        /*** It should be the same as calibration1 for the monocular case ***/
+        shared_ptr<CameraModel> calibration2 = pKF->getCalibration();
+
         //Check that baseline between KeyFrames is not too short
         Eigen::Vector3f vBaseLine = currKeyFrame_->getPose().inverse().translation() - pKF->getPose().inverse().translation();
         float medianDepth = pKF->computeSceneMedianDepth();
         float ratioBaseLineDepth = vBaseLine.norm() / medianDepth;
 
-        if(ratioBaseLineDepth < 0.01){
+        if(ratioBaseLineDepth < 0.001){
             continue;
         }
 
@@ -131,91 +134,64 @@ void LocalMapping::triangulateNewMapPoints() {
         //Try to triangulate a new MapPoint with each match
         for(size_t i = 0; i < vMatches.size(); i++){
             if(vMatches[i] != -1){
+                /*
+                 * Your code for Lab 4 - Task 2 here!
+                 * Note that the last KeyFrame inserted is stored at this->currKeyFrame_
+                 */
+                cv::Point2f p1 = currKeyFrame_->getKeyPoint(i).pt;
+                Eigen::Vector3f ray1 = calibration1->unproject(p1).normalized();
 
-                cv::KeyPoint kp1 = currKeyFrame_->getKeyPoint(i);
-                cv::KeyPoint kp2 = pKF->getKeyPoint(vMatches[i]);
+                cv::Point2f p2 = pKF->getKeyPoint(vMatches[i]).pt;
+                Eigen::Vector3f ray2 = calibration2->unproject(p2).normalized();
 
-                //Store the points in the vectors
-                vTriangulated1.push_back(kp1);
-                vTriangulated2.push_back(kp2);
-
-                //get the rays in each camera frame NORMALIZED
-                Eigen::Vector2f uv1(kp1.pt.x, kp1.pt.y);
-                Eigen::Vector2f uv2(kp2.pt.x, kp2.pt.y);
-
-                Eigen::Vector3f ray1, ray2;
-                calibration1->unproject(uv1, ray1);
-                pKF->getCalibration()->unproject(uv2, ray2);
-
-                //1st check: Parallax between rays (with respect one camera frame)
-                Eigen::Vector3f ray21 = T21 * ray2;
-
-                ray1 = ray1.normalized();
-                ray2 = ray2.normalized();
-                ray21 = ray21.normalized();
-
-
-                if (cosRayParallax(ray1, ray21) > settings_.getMinCos()) {
-                    std::cout << "Parallax check failed" << std::endl;
+                // Condition 1: has been observed with enough parallax
+                float cos = cosRayParallax(T21 * ray1, ray2);
+                if (cos > settings_.getMinCos()) {
                     continue;
                 }
 
-                //Triangulation
-                Eigen::Vector3f p3D;        //Point in world coordinates
-                triangulate(ray1, ray2, T1w, T2w, p3D);
+                Eigen::Vector3f x3D;
+                triangulate(ray1, ray2, T1w, T2w, x3D);
 
-                //2nd check: Depth consistency
-                Eigen::Vector3f p3D_c1 = T1w * p3D;
-                Eigen::Vector3f p3D_c2 = T2w * p3D;
-                // std::cout << p3D_c1.z() << ", " << p3D_c2.z() << std::endl;
-                if (p3D_c1.z() < 0 || p3D_c2.z() < 0) {
-                    std::cout << "Depth consistency check failed" << std::endl;
+                // Condition 2: triangulated in front of both cameras
+                Eigen::Vector3f x3D1 = T1w * x3D;
+                Eigen::Vector3f x3D2 = T2w * x3D;
+                if (x3D1.z() <= 0.0f || x3D2.z() <= 0.0f) {
                     continue;
                 }
 
-                //3rd check: Reprojection error
-                cv::Point2f uv1_reproj = calibration1->project(p3D_c1);
-                cv::Point2f uv2_reproj = pKF->getCalibration()->project(p3D_c2);
-
-                float reproj_error_1 = squaredReprojectionError(kp1.pt, uv1_reproj);
-                float reproj_error_2 = squaredReprojectionError(kp2.pt, uv2_reproj);
-
-                // std::cout << "Reprojection error 1: " << reproj_error_1 << std::endl;
-                if (reproj_error_1 >= 5 || reproj_error_2 >= 5) {
-                    std::cout << "Reprojection error check failed" << std::endl;
+                // Condition 3: point reprojection error is low
+                int maxReproj = settings_.getMaxReprojError();
+                cv::Point2f p2D1 = calibration1->project(x3D1);
+                if (squaredReprojectionError(p1, p2D1) > maxReproj) {
+                    continue;
+                }
+                cv::Point2f p2D2 = calibration2->project(x3D2);
+                if (squaredReprojectionError(p2, p2D2) > maxReproj) {
                     continue;
                 }
 
-                //Create a new MapPoint
-                std::shared_ptr<MapPoint> pMP = std::make_shared<MapPoint>(p3D);
-
-            
-
+                // Add to map and keyframe observations
+                std::shared_ptr<MapPoint> pMP = std::make_shared<MapPoint>(x3D);
+                currKeyFrame_->setMapPoint(i, pMP);
+                pKF->setMapPoint(vMatches[i], pMP);
                 pMap_->insertMapPoint(pMP);
-
-                //Assign the new MapPoint to the KeyFrames and add the observation
-                currKeyFrame_->setMapPoint(i,pMP);
-                pKF->setMapPoint(vMatches[i],pMP);
-                
-                pMap_->addObservation(currKeyFrame_->getId(),pMP->getId(),i);
-                pMap_->addObservation(pKF->getId(),pMP->getId(),vMatches[i]);
-                
-                nTriangulated++;
-
-            }   
+                pMap_->addObservation(currKeyFrame_->getId(), pMP->getId(), i);
+                pMap_->addObservation(pKF->getId(), pMP->getId(), vMatches[i]);
+            }
         }
     }
 }
 
 void LocalMapping::checkDuplicatedMapPoints() {
-/*    vector<pair<ID,int>> vKFcovisible = pMap_->getCovisibleKeyFrames(currKeyFrame_->getId());
+    vector<pair<ID,int>> vKFcovisible = pMap_->getCovisibleKeyFrames(currKeyFrame_->getId());
     vector<shared_ptr<MapPoint>> vCurrMapPoints = currKeyFrame_->getMapPoints();
 
     for(int i = 0; i < vKFcovisible.size(); i++){
         if(vKFcovisible[i].first == currKeyFrame_->getId())
             continue;
-        int nFused = fuse(pMap_->getKeyFrame(vKFcovisible[i].first),settings_.getMatchingFuseTh(),vCurrMapPoints,pMap_.get());
+        int nFused = fuse(pMap_->getKeyFrame(vKFcovisible[i].first),settings_.getMatchingFuseTh(),vCurrMapPoints,pMap_.get(), settings_);
         pMap_->checkKeyFrame(vKFcovisible[i].first);
         pMap_->checkKeyFrame(currKeyFrame_->getId());
-    }*/
+    }
 }

@@ -1,5 +1,7 @@
 %YAML:1.0
 
+Camera.type: "PinHole"
+
 # Camera calibration and distortion parameters
 Camera.fx: 517.306408
 Camera.fy: 516.469215
@@ -43,4 +45,11 @@ Matching.fuse: 50
 Map.minObs: 70
 
 #Min cos parallax to triangulate
-Triangulation.minCos: 0.999999
+Triangulation.minCos: 0.99999
+Triangulation.maxReprojectionError: 5.99
+
+# KeyFrame insertion strategy
+Tracking.maxFrames: 10
+Tracking.maxFeatures: 300
+Tracking.minFeatures: 10
+Tracking.refRatio: 0.60

@@ -78,6 +78,18 @@ public:
      */
     long unsigned int getId();
 
+    /*
+     * Number of frames that (should) have seen the point (i.e. inside its FOV)
+     */
+    int getNumFramesShouldSee();
+    int getNumFramesHaveSeen();
+
+    /*
+     * Increase number of times that point (should) have been seen
+     */
+    void increaseFramesShouldSee();
+    void increaseFramesHaveSeen();
+
 private:
     //3D position of the point in the world reference
     Eigen::Vector3f position3D_;
@@ -89,6 +101,8 @@ private:
     cv::Mat mDescriptor_;
 
     float fMinDistance_, fMaxDistance_;
+
+    int nFramesHaveSeen, nFramesShouldSee;
 
     //Unique id
     long unsigned int nId_;
